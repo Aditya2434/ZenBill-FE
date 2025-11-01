@@ -14,6 +14,7 @@ import {
   getHighestInvoiceNumber,
 } from "../hooks/useInvoices";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
+import { apiCreateInvoice, apiUpdateInvoice } from "../utils/api";
 import DummyPDF from "./DummyPDF";
 
 interface InvoiceFormProps {
@@ -485,7 +486,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const proceedWithSubmit = () => {
+  const proceedWithSubmit = async () => {
     setFormError(null);
 
     const cleanedInvoiceData = {
@@ -494,9 +495,70 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     };
 
     if (existingInvoice && updateInvoice) {
-      updateInvoice(cleanedInvoiceData as Invoice);
-      setView("invoices");
-    } else if (addInvoice) {
+      // Map to BE payload for update
+      const payload: any = {
+        invoiceDate: (cleanedInvoiceData as any).issueDate,
+        transportMode: (cleanedInvoiceData as any).transportMode || null,
+        vehicleNo: (cleanedInvoiceData as any).vehicleNo || null,
+        dateOfSupply: (cleanedInvoiceData as any).dateOfSupply || null,
+        placeOfSupply: (cleanedInvoiceData as any).placeOfSupply || null,
+        orderNumber: (cleanedInvoiceData as any).orderNo || null,
+        taxOnReverseCharge:
+          (cleanedInvoiceData as any).taxPayableOnReverseCharge || false,
+        grLrNo: (cleanedInvoiceData as any).grLrNo || null,
+        billedToName: (cleanedInvoiceData as any).client?.name || "",
+        billedToAddress: (cleanedInvoiceData as any).client?.address || "",
+        billedToGstin: (cleanedInvoiceData as any).client?.gstin || "",
+        billedToState: (cleanedInvoiceData as any).client?.state || "",
+        billedToCode: (cleanedInvoiceData as any).client?.stateCode || "",
+        shippedToName: (cleanedInvoiceData as any).shippingDetails?.name || "",
+        shippedToAddress:
+          (cleanedInvoiceData as any).shippingDetails?.address || "",
+        shippedToGstin:
+          (cleanedInvoiceData as any).shippingDetails?.gstin || "",
+        shippedToState:
+          (cleanedInvoiceData as any).shippingDetails?.state || "",
+        shippedToCode:
+          (cleanedInvoiceData as any).shippingDetails?.stateCode || "",
+        items: (cleanedInvoiceData as any).items.map((it: any) => ({
+          description: it.description,
+          hsnCode: it.hsnCode || "",
+          uom: it.uom || "",
+          quantity: Number(it.quantity) || 0,
+          rate: Number(it.unitPrice) || 0,
+        })),
+        cgstRate: (cleanedInvoiceData as any).cgstRate || 0,
+        sgstRate: (cleanedInvoiceData as any).sgstRate || 0,
+        igstRate: (cleanedInvoiceData as any).igstRate || 0,
+        selectedBankName:
+          (cleanedInvoiceData as any).bankDetails?.bankName ||
+          profile.defaultBankDetails?.bankName ||
+          "",
+        selectedAccountName:
+          (cleanedInvoiceData as any).bankDetails?.accountName ||
+          profile.defaultBankDetails?.accountName ||
+          "",
+        selectedAccountNumber:
+          (cleanedInvoiceData as any).bankDetails?.accountNumber ||
+          profile.defaultBankDetails?.accountNumber ||
+          "",
+        selectedIfscCode:
+          (cleanedInvoiceData as any).bankDetails?.ifsc ||
+          profile.defaultBankDetails?.ifsc ||
+          "",
+        termsAndConditions:
+          (cleanedInvoiceData as any).termsAndConditions || "",
+        ewayBillNo: (cleanedInvoiceData as any).eWayBillNo || "",
+      };
+
+      try {
+        await apiUpdateInvoice((existingInvoice as any).id, payload);
+        updateInvoice(cleanedInvoiceData as Invoice);
+        setView("invoices");
+      } catch (e: any) {
+        setFormError(e?.message || "Failed to update invoice");
+      }
+    } else {
       const finalSequential = invoiceNumberSequential.padStart(3, "0");
       const fullInvoiceNumber = `${invoiceNumberPrefix}${finalSequential}`;
 
@@ -521,21 +583,72 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         return;
       }
 
-      const invoiceToSave = {
-        ...(cleanedInvoiceData as Omit<Invoice, "id" | "invoiceNumber">),
-        invoiceNumber: fullInvoiceNumber,
+      // Map to BE payload
+      const payload: any = {
+        invoiceDate: (cleanedInvoiceData as any).issueDate,
+        transportMode: (cleanedInvoiceData as any).transportMode || null,
+        vehicleNo: (cleanedInvoiceData as any).vehicleNo || null,
+        dateOfSupply: (cleanedInvoiceData as any).dateOfSupply || null,
+        placeOfSupply: (cleanedInvoiceData as any).placeOfSupply || null,
+        orderNumber: (cleanedInvoiceData as any).orderNo || null,
+        taxOnReverseCharge:
+          (cleanedInvoiceData as any).taxPayableOnReverseCharge || false,
+        grLrNo: (cleanedInvoiceData as any).grLrNo || null,
+        billedToName: (cleanedInvoiceData as any).client?.name || "",
+        billedToAddress: (cleanedInvoiceData as any).client?.address || "",
+        billedToGstin: (cleanedInvoiceData as any).client?.gstin || "",
+        billedToState: (cleanedInvoiceData as any).client?.state || "",
+        billedToCode: (cleanedInvoiceData as any).client?.stateCode || "",
+        shippedToName: (cleanedInvoiceData as any).shippingDetails?.name || "",
+        shippedToAddress:
+          (cleanedInvoiceData as any).shippingDetails?.address || "",
+        shippedToGstin:
+          (cleanedInvoiceData as any).shippingDetails?.gstin || "",
+        shippedToState:
+          (cleanedInvoiceData as any).shippingDetails?.state || "",
+        shippedToCode:
+          (cleanedInvoiceData as any).shippingDetails?.stateCode || "",
+        items: (cleanedInvoiceData as any).items.map((it: any) => ({
+          description: it.description,
+          hsnCode: it.hsnCode || "",
+          uom: it.uom || "",
+          quantity: Number(it.quantity) || 0,
+          rate: Number(it.unitPrice) || 0,
+        })),
+        cgstRate: (cleanedInvoiceData as any).cgstRate || 0,
+        sgstRate: (cleanedInvoiceData as any).sgstRate || 0,
+        igstRate: (cleanedInvoiceData as any).igstRate || 0,
+        selectedBankName:
+          (cleanedInvoiceData as any).bankDetails?.bankName ||
+          profile.defaultBankDetails?.bankName ||
+          "",
+        selectedAccountName:
+          (cleanedInvoiceData as any).bankDetails?.accountName ||
+          profile.defaultBankDetails?.accountName ||
+          "",
+        selectedAccountNumber:
+          (cleanedInvoiceData as any).bankDetails?.accountNumber ||
+          profile.defaultBankDetails?.accountNumber ||
+          "",
+        selectedIfscCode:
+          (cleanedInvoiceData as any).bankDetails?.ifsc ||
+          profile.defaultBankDetails?.ifsc ||
+          "",
+        termsAndConditions:
+          (cleanedInvoiceData as any).termsAndConditions || "",
+        ewayBillNo: (cleanedInvoiceData as any).eWayBillNo || "",
       };
 
-      const success = addInvoice(invoiceToSave);
-      if (success) {
+      try {
+        await apiCreateInvoice(payload);
         setView("invoices");
-      } else {
-        setFormError("This invoice number might be a duplicate.");
+      } catch (e: any) {
+        setFormError(e?.message || "Failed to save invoice");
       }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const hasItems = cleanedItems.length > 0;
@@ -545,12 +658,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return;
     }
 
-    proceedWithSubmit();
+    await proceedWithSubmit();
   };
 
-  const handleConfirmSaveEmpty = () => {
+  const handleConfirmSaveEmpty = async () => {
     setShowEmptyInvoiceModal(false);
-    proceedWithSubmit();
+    await proceedWithSubmit();
   };
 
   const handleDiscardEmpty = () => {
