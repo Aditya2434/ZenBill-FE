@@ -71,6 +71,15 @@ export function apiUpdateInvoice(invoiceId: string | number, payload: any) {
   });
 }
 
+// Company API
+export function apiGetCompany() {
+  return request('/api/v1/company');
+}
+
+export function apiUpdateCompany(payload: any) {
+  return request('/api/v1/company', { method: 'PUT', json: payload });
+}
+
 export function apiGetProduct(productId: string) {
   return request(`/api/v1/products/${encodeURIComponent(productId)}`);
 }
