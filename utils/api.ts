@@ -64,6 +64,13 @@ export function apiGetInvoiceDetails(invoiceId: string | number) {
   return request(`/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/details`);
 }
 
+export function apiUpdateInvoice(invoiceId: string | number, payload: any) {
+  return request(`/api/v1/invoices/${encodeURIComponent(String(invoiceId))}`, {
+    method: "PUT",
+    json: payload,
+  });
+}
+
 export function apiGetProduct(productId: string) {
   return request(`/api/v1/products/${encodeURIComponent(productId)}`);
 }
