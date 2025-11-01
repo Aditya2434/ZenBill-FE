@@ -38,7 +38,7 @@ const App: React.FC = () => {
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
   const { clients, addClient, updateClient, deleteClient } = useClients();
-  const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, isLoadingProducts, loadError, refreshProducts } = useProducts();
 
   const handleSetView = useCallback((view: View) => {
     setCurrentView(view);
@@ -128,6 +128,9 @@ const App: React.FC = () => {
             addProduct={addProduct}
             updateProduct={updateProduct}
             deleteProduct={deleteProduct}
+            loading={isLoadingProducts}
+            error={loadError}
+            reload={refreshProducts}
           />
         );
       case "settings":
