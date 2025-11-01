@@ -51,6 +51,19 @@ export function apiLogin(payload: { email: string; password: string }) {
   return request("/api/v1/auth/login", { method: "POST", json: payload });
 }
 
+// Invoices API
+export function apiCreateInvoice(payload: any) {
+  return request("/api/v1/invoices", { method: "POST", json: payload });
+}
+
+export function apiListInvoices() {
+  return request("/api/v1/invoices");
+}
+
+export function apiGetInvoiceDetails(invoiceId: string | number) {
+  return request(`/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/details`);
+}
+
 export function apiGetProduct(productId: string) {
   return request(`/api/v1/products/${encodeURIComponent(productId)}`);
 }

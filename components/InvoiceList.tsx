@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Invoice, InvoiceStatus, CompanyProfile } from "../types";
 import { View } from "../App";
 import { PlusIcon, DownloadIcon, TrashIcon } from "./icons";
 import DummyPDF from "./DummyPDF";
 import { pdf } from "@react-pdf/renderer";
+import { apiListInvoices, apiGetInvoiceDetails } from "../utils/api";
 
 // html2canvas/jsPDF removed in favor of @react-pdf/renderer
 
@@ -13,6 +14,7 @@ interface InvoiceListProps {
   onDelete: (invoiceId: string) => void;
   setView: (view: View) => void;
   profile: CompanyProfile;
+  onViewDetails?: (invoiceId: string | number) => void;
 }
 
 const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
@@ -50,7 +52,144 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   onDelete,
   setView,
   profile,
+  onViewDetails,
 }) => {
+  const [rows, setRows] = useState<
+    Array<{
+      id: number | string;
+      invoiceNumber: string;
+      invoiceDate: string;
+      billedToName: string;
+      totalAmountAfterTax: number;
+      pdfUrl?: string;
+    }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setError("");
+      try {
+        const body = await apiListInvoices();
+        const list = Array.isArray(body)
+          ? body
+          : Array.isArray(body?.data)
+          ? body.data
+          : [];
+        const mapped = list.map((it: any) => ({
+          id: it.id,
+          invoiceNumber: String(it.invoiceNumber || ""),
+          invoiceDate: String(it.invoiceDate || ""),
+          billedToName: String(it.billedToName || ""),
+          totalAmountAfterTax: Number(it.totalAmountAfterTax || 0),
+          pdfUrl: it.pdfUrl,
+        }));
+        if (!cancelled) setRows(mapped);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Failed to load invoices");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleEditClick = async (row: {
+    id: number | string;
+    invoiceNumber: string;
+  }) => {
+    const match = invoices.find(
+      (inv) => inv.invoiceNumber === row.invoiceNumber
+    );
+    if (match) {
+      onEdit(match);
+      return;
+    }
+    // Fallback: fetch details from backend and map to local Invoice shape
+    try {
+      const body = await apiGetInvoiceDetails(row.id);
+      const d: any = (body && (body as any).data) || body;
+      if (!d) return;
+      const mapped: Invoice = {
+        id: String(d.id ?? row.id),
+        invoiceNumber: String(d.invoiceNumber || row.invoiceNumber || ""),
+        client: {
+          id: "",
+          name: String(d.billedToName || ""),
+          email: "",
+          address: String(d.billedToAddress || ""),
+          gstin: d.billedToGstin || "",
+          state: d.billedToState || "",
+          stateCode: d.billedToCode || "",
+        },
+        shippingDetails: {
+          name: String(d.shippedToName || ""),
+          address: String(d.shippedToAddress || ""),
+          gstin: d.shippedToGstin || "",
+          state: d.shippedToState || "",
+          stateCode: d.shippedToCode || "",
+        },
+        items: (Array.isArray(d.items) ? d.items : []).map(
+          (it: any, idx: number) => ({
+            id: `item-${Date.now()}-${idx}`,
+            description: String(it.description || ""),
+            hsnCode: it.hsnCode || "",
+            uom: it.uom || "",
+            quantity: Number(it.quantity) || 0,
+            unitPrice: Number(it.rate) || 0,
+          })
+        ),
+        issueDate: String(d.invoiceDate || ""),
+        dueDate: String(d.invoiceDate || ""),
+        status: InvoiceStatus.Draft,
+        transportMode: d.transportMode || "",
+        vehicleNo: d.vehicleNo || "",
+        dateOfSupply: d.dateOfSupply || "",
+        placeOfSupply: d.placeOfSupply || "",
+        orderNo: d.orderNumber || "",
+        taxPayableOnReverseCharge: Boolean(d.taxOnReverseCharge) || false,
+        cgstRate: Number(d.cgstRate) || 0,
+        sgstRate: Number(d.sgstRate) || 0,
+        igstRate: Number(d.igstRate) || 0,
+        grLrNo: d.grLrNo || "",
+        eWayBillNo: d.ewayBillNo || "",
+        bankDetails: {
+          accountName: d.selectedAccountName || "",
+          accountNumber: d.selectedAccountNumber || "",
+          bankName: d.selectedBankName || "",
+          branch: undefined,
+          ifsc: d.selectedIfscCode || "",
+        },
+        termsAndConditions: d.termsAndConditions || "",
+        jurisdiction: "",
+      };
+      onEdit(mapped);
+    } catch (_e) {
+      if (onViewDetails) onViewDetails(row.id);
+    }
+  };
+
+  const handleDownloadRow = (row: {
+    id: number | string;
+    invoiceNumber: string;
+    pdfUrl?: string;
+  }) => {
+    if (row.pdfUrl) {
+      window.open(row.pdfUrl, "_blank");
+      return;
+    }
+    const match = invoices.find(
+      (inv) => inv.invoiceNumber === row.invoiceNumber
+    );
+    if (match) {
+      handleDownload(match);
+    }
+  };
   const handleDownload = async (invoice: Invoice) => {
     try {
       const { subtotal, cgstAmount, sgstAmount, igstAmount, totalTax, total } =
@@ -86,6 +225,11 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           Create Invoice
         </button>
       </div>
+      {error && (
+        <div className="mx-6 mt-4 mb-0 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+          {error}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -97,16 +241,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 Client
               </th>
               <th scope="col" className="px-6 py-3">
-                Issue Date
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Due Date
+                Invoice Date
               </th>
               <th scope="col" className="px-6 py-3">
                 Amount
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Status
               </th>
               <th scope="col" className="px-6 py-3 text-right">
                 Actions
@@ -114,46 +252,38 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             </tr>
           </thead>
           <tbody>
-            {invoices.map((invoice) => (
-              <tr
-                key={invoice.id}
-                className="bg-white border-b hover:bg-gray-50"
-              >
+            {rows.map((r) => (
+              <tr key={r.id} className="bg-white border-b hover:bg-gray-50">
                 <td className="px-6 py-4 font-medium text-gray-900">
-                  {invoice.invoiceNumber}
+                  {r.invoiceNumber}
                 </td>
-                <td className="px-6 py-4">{invoice.client.name}</td>
-                <td className="px-6 py-4">{invoice.issueDate}</td>
-                <td className="px-6 py-4">{invoice.dueDate}</td>
+                <td className="px-6 py-4">{r.billedToName}</td>
+                <td className="px-6 py-4">{r.invoiceDate}</td>
                 <td className="px-6 py-4 font-medium text-gray-800">
-                  ₹
-                  {calculateInvoiceTotals(invoice).total.toLocaleString(
-                    "en-IN"
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={invoice.status} />
+                  ₹{r.totalAmountAfterTax.toLocaleString("en-IN")}
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
                   <button
-                    onClick={() => handleDownload(invoice)}
+                    onClick={() => handleDownloadRow(r)}
                     title="Download PDF"
                     className="p-1 font-medium text-gray-500 hover:text-blue-600"
                   >
                     <DownloadIcon className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onEdit(invoice)}
+                    onClick={() => handleEditClick(r)}
                     className="font-medium text-blue-600 hover:underline"
                   >
                     Edit
                   </button>
-                  <button
-                    onClick={() => onDelete(invoice.id)}
-                    className="font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                  {onViewDetails && (
+                    <button
+                      onClick={() => onViewDetails(r.id)}
+                      className="font-medium text-gray-600 hover:underline"
+                    >
+                      View
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

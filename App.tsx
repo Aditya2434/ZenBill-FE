@@ -18,6 +18,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { RequireAuth } from "./hooks/useAuth";
 import DummyPDF from "./components/DummyPDF";
 import { PDFViewer } from "@react-pdf/renderer";
+import InvoiceDetails from "./components/InvoiceDetails";
 
 export type View =
   | "dashboard"
@@ -30,11 +31,13 @@ export type View =
   | "products"
   | "DummyPDF"
   | "login"
-  | "signup";
+  | "signup"
+  | "invoice-details";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
+  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<string | number | null>(null);
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
   const { clients, addClient, updateClient, deleteClient } = useClients();
@@ -68,6 +71,7 @@ const App: React.FC = () => {
             onDelete={deleteInvoice}
             setView={handleSetView}
             profile={profile}
+            onViewDetails={(id) => { setInvoiceIdForDetails(id); setCurrentView('invoice-details'); }}
           />
         );
       case "create-invoice":
@@ -99,6 +103,19 @@ const App: React.FC = () => {
             onDelete={deleteInvoice}
             setView={handleSetView}
             profile={profile}
+          />
+        );
+      case "invoice-details":
+        return invoiceIdForDetails != null ? (
+          <InvoiceDetails invoiceId={invoiceIdForDetails} setView={handleSetView} profile={profile} />
+        ) : (
+          <InvoiceList
+            invoices={invoices}
+            onEdit={handleEditInvoice}
+            onDelete={deleteInvoice}
+            setView={handleSetView}
+            profile={profile}
+            onViewDetails={(id) => { setInvoiceIdForDetails(id); setCurrentView('invoice-details'); }}
           />
         );
       case "create-quotation":
