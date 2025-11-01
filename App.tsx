@@ -11,7 +11,11 @@ import { useInvoices } from "./hooks/useInvoices";
 import { useProfile } from "./hooks/useProfile";
 import { useClients } from "./hooks/useClients";
 import { useProducts } from "./hooks/useProducts";
+import Login from "./components/auth/Login";
+import Signup from "./components/auth/Signup";
 import { Invoice } from "./types";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { RequireAuth } from "./hooks/useAuth";
 import DummyPDF from "./components/DummyPDF";
 import { PDFViewer } from "@react-pdf/renderer";
 
@@ -24,7 +28,9 @@ export type View =
   | "settings"
   | "clients"
   | "products"
-  | "DummyPDF";
+  | "DummyPDF"
+  | "login"
+  | "signup";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>("dashboard");
@@ -126,6 +132,10 @@ const App: React.FC = () => {
         );
       case "settings":
         return <Profile profile={profile} updateProfile={updateProfile} />;
+      case "login":
+        return <Login setView={handleSetView} />;
+      case "signup":
+        return <Signup setView={handleSetView} />;
       case "DummyPDF": {
         const sampleInvoice = invoices[0] || {
           id: "sample-id",
@@ -181,15 +191,27 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 text-gray-800">
-      <Sidebar currentView={currentView} setView={handleSetView} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header setView={handleSetView} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 md:p-8">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login setView={handleSetView} />} />
+      <Route path="/signup" element={<Signup setView={handleSetView} />} />
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <div className="flex h-screen bg-gray-100 text-gray-800">
+              <Sidebar currentView={currentView} setView={handleSetView} />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <Header setView={handleSetView} />
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 md:p-8">
+                  {renderContent()}
+                </main>
+              </div>
+            </div>
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 
