@@ -1,4 +1,4 @@
-export const BASE_URL = (import.meta as any)?.env?.VITE_API_BASE || "";
+export const BASE_URL = "http://localhost:8080";
 
 type RequestOptions = RequestInit & { json?: any };
 
@@ -8,6 +8,12 @@ async function request(path: string, options: RequestOptions = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
+  try {
+    const token = localStorage.getItem("zenbill_auth_token");
+    if (token) {
+      (headers as any)["Authorization"] = `Bearer ${token}`;
+    }
+  } catch (_) {}
   const res = await fetch(url, {
     ...options,
     headers,
@@ -43,4 +49,36 @@ export function apiRegister(payload: {
 
 export function apiLogin(payload: { email: string; password: string }) {
   return request("/api/v1/auth/login", { method: "POST", json: payload });
+}
+
+export function apiGetProduct(productId: string) {
+  return request(`/api/v1/products/${encodeURIComponent(productId)}`);
+}
+
+export function apiUpdateProduct(
+  productId: string,
+  payload: { productName: string; hsnCode: string; uom: string }
+) {
+  return request(`/api/v1/products/${encodeURIComponent(productId)}`, {
+    method: "PUT",
+    json: payload,
+  });
+}
+
+export function apiDeleteProduct(productId: string) {
+  return request(`/api/v1/products/${encodeURIComponent(productId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function apiListProducts() {
+  return request("/api/v1/products");
+}
+
+export function apiCreateProduct(payload: {
+  productName: string;
+  hsnCode: string;
+  uom: string;
+}) {
+  return request("/api/v1/products", { method: "POST", json: payload });
 }
