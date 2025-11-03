@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { CompanyProfile } from "../types";
-import { apiGetCompany, apiUpdateCompany } from "../utils/api";
+import {
+  apiGetCompany,
+  apiUpdateCompany,
+  apiStorageUpload,
+} from "../utils/api";
 
 interface ProfileProps {
   profile: CompanyProfile;
@@ -10,6 +14,7 @@ interface ProfileProps {
 export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
   const [formData, setFormData] = useState<CompanyProfile>(profile);
   const [feedback, setFeedback] = useState("");
+  // Uploads are now routed via backend using Supabase service role for private storage
 
   useEffect(() => {
     setFormData(profile);
@@ -21,6 +26,18 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         const body = await apiGetCompany();
         const d: any = (body && (body as any).data) || body;
         if (!d) return;
+
+        // Backend returns proxy URLs (relative paths like /api/v1/storage/image?...)
+        // Convert them to ABSOLUTE URLs pointing to backend
+        const BASE_URL = "http://localhost:8080";
+        const toAbsoluteUrl = (url?: string) => {
+          if (!url) return url;
+          // If it starts with /api/, prepend backend URL
+          if (url.startsWith("/api/")) return BASE_URL + url;
+          // If it's already absolute, return as-is
+          return url;
+        };
+
         setFormData((prev) => ({
           ...prev,
           companyName: d.companyName || prev.companyName,
@@ -29,9 +46,10 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
           pan: d.panNumber || prev.pan,
           companyState: d.state || prev.companyState,
           companyStateCode: d.code || prev.companyStateCode,
-          logo: d.companyLogoUrl || prev.logo,
-          companySeal: d.companyStampUrl || prev.companySeal,
-          authorizedSignature: d.signatureUrl || prev.authorizedSignature,
+          logo: toAbsoluteUrl(d.companyLogoUrl) || prev.logo,
+          companySeal: toAbsoluteUrl(d.companyStampUrl) || prev.companySeal,
+          authorizedSignature:
+            toAbsoluteUrl(d.signatureUrl) || prev.authorizedSignature,
           companyAcronym: d.invoicePrefix || prev.companyAcronym,
         }));
       } catch (_) {}
@@ -56,48 +74,106 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     }));
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const d: any = await apiStorageUpload(file, "company/logo", "document");
+      const BASE_URL = "http://localhost:8080";
+      // Backend returns relative URL like /api/v1/storage/image?...&token=JWT
+      let relativeUrl = d?.url; // Keep relative for DB storage
+      let absoluteUrl = relativeUrl;
+      if (absoluteUrl && absoluteUrl.startsWith("/api/")) {
+        absoluteUrl = BASE_URL + absoluteUrl;
+      }
+      // Store absolute URL in state for immediate display, but save relative to DB
+      setFormData((prev) => ({ ...prev, logo: absoluteUrl || prev.logo }));
+      setFeedback("Logo uploaded");
+    } catch (_) {
+      setFeedback("Logo upload failed");
+    } finally {
+      setTimeout(() => setFeedback(""), 2000);
     }
   };
 
-  const handleSealChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSealChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          companySeal: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const d: any = await apiStorageUpload(file, "company/stamp", "document");
+      const BASE_URL = "http://localhost:8080";
+      let absoluteUrl = d?.url;
+      if (absoluteUrl && absoluteUrl.startsWith("/api/")) {
+        absoluteUrl = BASE_URL + absoluteUrl;
+      }
+      setFormData((prev) => ({
+        ...prev,
+        companySeal: absoluteUrl || prev.companySeal,
+      }));
+      setFeedback("Stamp uploaded");
+    } catch (_) {
+      setFeedback("Stamp upload failed");
+    } finally {
+      setTimeout(() => setFeedback(""), 2000);
     }
   };
 
-  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignatureChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          authorizedSignature: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const d: any = await apiStorageUpload(
+        file,
+        "company/signature",
+        "document"
+      );
+      const BASE_URL = "http://localhost:8080";
+      let absoluteUrl = d?.url;
+      if (absoluteUrl && absoluteUrl.startsWith("/api/")) {
+        absoluteUrl = BASE_URL + absoluteUrl;
+      }
+      setFormData((prev) => ({
+        ...prev,
+        authorizedSignature: absoluteUrl || prev.authorizedSignature,
+      }));
+      setFeedback("Signature uploaded");
+    } catch (_) {
+      setFeedback("Signature upload failed");
+    } finally {
+      setTimeout(() => setFeedback(""), 2000);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const BASE_URL = "http://localhost:8080";
+
+      // Extract just the storage path from proxy URLs before saving
+      const extractPath = (url?: string) => {
+        if (!url) return "";
+
+        // Strip BASE_URL if present
+        let relativeUrl = url;
+        if (relativeUrl.startsWith(BASE_URL)) {
+          relativeUrl = relativeUrl.substring(BASE_URL.length);
+        }
+
+        // If it's a proxy URL, extract just the path parameter
+        if (relativeUrl.includes("/api/v1/storage/image?")) {
+          const urlParams = new URLSearchParams(relativeUrl.split("?")[1]);
+          const bucket = urlParams.get("bucket") || "document";
+          const path = urlParams.get("path");
+          if (path) {
+            return `${bucket}/${path}`; // Save as "document/company/logo/uuid.png"
+          }
+        }
+
+        return relativeUrl;
+      };
+
       const payload = {
         companyName: formData.companyName,
         companyAddress: formData.companyAddress,
@@ -106,9 +182,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         code: formData.companyStateCode || "",
         gstinNo: formData.gstin,
         panNumber: formData.pan,
-        companyLogoUrl: formData.logo || "",
-        companyStampUrl: formData.companySeal || "",
-        signatureUrl: formData.authorizedSignature || "",
+        companyLogoUrl: extractPath(formData.logo),
+        companyStampUrl: extractPath(formData.companySeal),
+        signatureUrl: extractPath(formData.authorizedSignature),
         invoicePrefix: formData.companyAcronym || "",
       };
       await apiUpdateCompany(payload);

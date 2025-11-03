@@ -111,3 +111,56 @@ export function apiCreateProduct(payload: {
 }) {
   return request("/api/v1/products", { method: "POST", json: payload });
 }
+
+// Storage API (Supabase via backend)
+export async function apiStorageUpload(file: File, folder: string, bucket?: string) {
+  const url = new URL(`${BASE_URL}/api/v1/storage/upload`);
+  if (folder) url.searchParams.set('folder', folder);
+  if (bucket) url.searchParams.set('bucket', bucket);
+  const form = new FormData();
+  form.append('file', file);
+  const headers: HeadersInit = {};
+  try {
+    const token = localStorage.getItem("zenbill_auth_token");
+    if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
+  } catch (_) {}
+  const res = await fetch(url.toString(), { method: 'POST', body: form, headers });
+  const dataText = await res.text();
+  let data: any = undefined;
+  try {
+    data = dataText ? JSON.parse(dataText) : undefined;
+  } catch (_) {
+    data = dataText;
+  }
+  if (!res.ok) {
+    const message = (data && (data.message || data.error)) || res.statusText || 'Upload failed';
+    throw new Error(message);
+  }
+  // Return the inner payload so callers can access fields like url directly
+  return (data && data.data) ? data.data : data;
+}
+
+export function apiStorageSignUrl(payload: { bucket?: string; path: string; expiresIn?: number }) {
+  return request('/api/v1/storage/sign-url', { method: 'POST', json: payload });
+}
+
+// Fetch image through backend proxy (for private buckets)
+export async function apiStorageGetImage(bucket: string, path: string): Promise<string> {
+  const url = new URL(`${BASE_URL}/api/v1/storage/image`);
+  url.searchParams.set('bucket', bucket);
+  url.searchParams.set('path', path);
+  const headers: HeadersInit = {};
+  try {
+    const token = localStorage.getItem("zenbill_auth_token");
+    if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
+  } catch (_) {}
+  const res = await fetch(url.toString(), { headers });
+  if (!res.ok) throw new Error('Failed to fetch image');
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
