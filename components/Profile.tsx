@@ -4,6 +4,10 @@ import {
   apiGetCompany,
   apiUpdateCompany,
   apiStorageUpload,
+  apiListBankDetails,
+  apiCreateBankDetail,
+  apiUpdateBankDetail,
+  apiDeleteBankDetail,
 } from "../utils/api";
 
 interface ProfileProps {
@@ -15,6 +19,15 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
   const [formData, setFormData] = useState<CompanyProfile>(profile);
   const [feedback, setFeedback] = useState("");
   // Uploads are now routed via backend using Supabase service role for private storage
+  const [bankDetails, setBankDetails] = useState<any[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string | number | null>(
+    null
+  );
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    id?: string | number;
+    name?: string;
+  }>({ open: false });
 
   useEffect(() => {
     setFormData(profile);
@@ -56,11 +69,118 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const body = await apiListBankDetails();
+        const list = Array.isArray(body)
+          ? body
+          : Array.isArray((body as any)?.data)
+          ? (body as any).data
+          : [];
+        setBankDetails(list);
+      } catch (_) {}
+    })();
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Bank list handlers - use upper section for add/edit
+  const addNewBank = () => {
+    setSelectedBankId(null);
+    setFormData((prev) => ({
+      ...prev,
+      defaultBankDetails: {
+        bankName: "",
+        accountName: "",
+        accountNumber: "",
+        branch: "",
+        ifsc: "",
+      },
+    }));
+  };
+
+  const handleSaveBankDetails = async () => {
+    try {
+      const payload = {
+        bankName: formData.defaultBankDetails.bankName || "",
+        accountName: formData.defaultBankDetails.accountName || "",
+        accountNumber: formData.defaultBankDetails.accountNumber || "",
+        branch: formData.defaultBankDetails.branch || "",
+        ifsc: (formData.defaultBankDetails.ifsc || "").toUpperCase().trim(),
+      };
+      if (payload.ifsc.length !== 11) {
+        setFeedback("IFSC code must be 11 characters");
+        setTimeout(() => setFeedback(""), 3000);
+        return;
+      }
+      if (selectedBankId != null) {
+        await apiUpdateBankDetail(selectedBankId, payload);
+        setFeedback("Bank details updated");
+      } else {
+        await apiCreateBankDetail(payload);
+        setFeedback("Bank details added");
+      }
+      const body = await apiListBankDetails();
+      const list = Array.isArray(body)
+        ? body
+        : Array.isArray((body as any)?.data)
+        ? (body as any).data
+        : [];
+      setBankDetails(list);
+      setSelectedBankId(null);
+    } catch (err: any) {
+      setFeedback(err?.message || "Failed to save bank details");
+    } finally {
+      setTimeout(() => setFeedback(""), 3000);
+    }
+  };
+
+  const startEditBank = (bd: any) => {
+    setSelectedBankId(bd.id);
+    setFormData((prev) => ({
+      ...prev,
+      defaultBankDetails: {
+        bankName: bd.bankName ?? bd.bank_name ?? "",
+        accountName: bd.accountName ?? bd.account_name ?? "",
+        accountNumber: bd.accountNumber ?? bd.account_number ?? "",
+        branch: bd.bankBranch ?? bd.branch ?? "",
+        ifsc: bd.ifscCode ?? bd.ifsc ?? "",
+      },
+    }));
+  };
+
+  const confirmDeleteBank = (bd: any) => {
+    setDeleteConfirm({
+      open: true,
+      id: bd.id,
+      name: bd.bankName ?? bd.bank_name,
+    });
+  };
+
+  const performDeleteBank = async () => {
+    if (!deleteConfirm.id) return;
+    try {
+      await apiDeleteBankDetail(deleteConfirm.id);
+      const body = await apiListBankDetails();
+      const list = Array.isArray(body)
+        ? body
+        : Array.isArray((body as any)?.data)
+        ? (body as any).data
+        : [];
+      setBankDetails(list);
+      setFeedback("Bank detail deleted");
+    } catch (err: any) {
+      setFeedback(err?.message || "Failed to delete");
+    } finally {
+      setDeleteConfirm({ open: false });
+      setTimeout(() => setFeedback(""), 2000);
+    }
   };
 
   const handleBankDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,9 +564,16 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         </div>
 
         <div>
-          <h3 className="text-lg font-medium text-gray-900 border-t pt-6">
-            Default Bank Details
-          </h3>
+          <div className="flex items-center justify-between border-t pt-6">
+            <h3 className="text-lg font-medium text-gray-900">Bank Details</h3>
+            <button
+              type="button"
+              onClick={addNewBank}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Add New
+            </button>
+          </div>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label
@@ -536,12 +663,113 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
             <span className="text-green-600 text-sm mr-4">{feedback}</span>
           )}
           <button
-            type="submit"
+            type="button"
+            onClick={handleSaveBankDetails}
+            disabled={
+              !(
+                formData.defaultBankDetails.bankName &&
+                formData.defaultBankDetails.accountName &&
+                formData.defaultBankDetails.accountNumber &&
+                formData.defaultBankDetails.ifsc
+              )
+            }
             className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Save Bank Details
+            {selectedBankId != null
+              ? "Update Bank Details"
+              : "Add Bank Details"}
           </button>
         </div>
+
+        {/* Saved Bank Details List */}
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium text-gray-900">
+            Saved Bank Details
+          </h3>
+          {/* Removed inline add/edit form; using upper Bank Details inputs */}
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3">Bank</th>
+                  <th className="px-6 py-3">Account Name</th>
+                  <th className="px-6 py-3">Account No</th>
+                  <th className="px-6 py-3">Branch</th>
+                  <th className="px-6 py-3">IFSC</th>
+                  <th className="px-6 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bankDetails.map((bd) => (
+                  <tr
+                    key={bd.id}
+                    className="bg-white border-b hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-3">{bd.bankName ?? bd.bank_name}</td>
+                    <td className="px-6 py-3">
+                      {bd.accountName ?? bd.account_name}
+                    </td>
+                    <td className="px-6 py-3">
+                      {bd.accountNumber ?? bd.account_number}
+                    </td>
+                    <td className="px-6 py-3">{bd.bankBranch ?? bd.branch}</td>
+                    <td className="px-6 py-3">{bd.ifscCode ?? bd.ifsc}</td>
+                    <td className="px-6 py-3 text-right space-x-2">
+                      <button
+                        onClick={() => startEditBank(bd)}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => confirmDeleteBank(bd)}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {bankDetails.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10 text-gray-500">
+                      No bank details found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {deleteConfirm.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+              <h3 className="text-lg font-medium text-gray-900">
+                Delete bank detail?
+              </h3>
+              <p className="text-sm text-gray-600 mt-2">
+                This action cannot be undone.
+              </p>
+              <div className="mt-4 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm({ open: false })}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={performDeleteBank}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

@@ -80,6 +80,54 @@ export function apiUpdateCompany(payload: any) {
   return request('/api/v1/company', { method: 'PUT', json: payload });
 }
 
+// Bank Details API
+export function apiListBankDetails() {
+  return request('/api/v1/bank-details');
+}
+
+export function apiCreateBankDetail(payload: {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  ifsc: string;
+  branch?: string;
+}) {
+  const body = {
+    bankName: payload.bankName,
+    accountName: payload.accountName,
+    accountNumber: payload.accountNumber,
+    bankBranch: payload.branch || '',
+    ifscCode: payload.ifsc,
+  };
+  return request('/api/v1/bank-details', { method: 'POST', json: body });
+}
+
+export function apiUpdateBankDetail(bankDetailId: string | number, payload: {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  ifsc: string;
+  branch?: string;
+}) {
+  const body = {
+    bankName: payload.bankName,
+    accountName: payload.accountName,
+    accountNumber: payload.accountNumber,
+    bankBranch: payload.branch || '',
+    ifscCode: payload.ifsc,
+  };
+  return request(`/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`, { method: 'PUT', json: body });
+}
+
+export async function apiDeleteBankDetail(bankDetailId: string | number) {
+  // Prefer RESTful path; fallback to body if BE expects no id in path
+  try {
+    return await request(`/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`, { method: 'DELETE' });
+  } catch (e) {
+    return await request('/api/v1/bank-details', { method: 'DELETE', json: { id: bankDetailId } });
+  }
+}
+
 export function apiGetProduct(productId: string) {
   return request(`/api/v1/products/${encodeURIComponent(productId)}`);
 }
