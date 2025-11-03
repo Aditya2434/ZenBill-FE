@@ -128,6 +128,53 @@ export async function apiDeleteBankDetail(bankDetailId: string | number) {
   }
 }
 
+// Clients API
+export function apiListClients() {
+  return request('/api/v1/clients');
+}
+
+export function apiGetClient(clientId: string | number) {
+  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`);
+}
+
+export function apiCreateClient(payload: {
+  name: string;
+  address: string;
+  gstin?: string;
+  state?: string;
+  stateCode?: string;
+}) {
+  const body = {
+    clientName: payload.name,
+    clientAddress: payload.address,
+    gstinNo: payload.gstin || '',
+    state: payload.state || '',
+    code: payload.stateCode || '',
+  };
+  return request('/api/v1/clients', { method: 'POST', json: body });
+}
+
+export function apiUpdateClient(clientId: string | number, payload: {
+  name: string;
+  address: string;
+  gstin?: string;
+  state?: string;
+  stateCode?: string;
+}) {
+  const body = {
+    clientName: payload.name,
+    clientAddress: payload.address,
+    gstinNo: payload.gstin || '',
+    state: payload.state || '',
+    code: payload.stateCode || '',
+  };
+  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, { method: 'PUT', json: body });
+}
+
+export function apiDeleteClient(clientId: string | number) {
+  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, { method: 'DELETE' });
+}
+
 export function apiGetProduct(productId: string) {
   return request(`/api/v1/products/${encodeURIComponent(productId)}`);
 }
