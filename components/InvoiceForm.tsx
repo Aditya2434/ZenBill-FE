@@ -9,12 +9,17 @@ import {
 } from "../types";
 import { View } from "../App";
 import { PlusIcon, TrashIcon, DownloadIcon } from "./icons";
+import { Dropdown } from "./Dropdown";
 import {
   generateNextInvoiceNumber,
   getHighestInvoiceNumber,
 } from "../hooks/useInvoices";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
-import { apiCreateInvoice, apiUpdateInvoice } from "../utils/api";
+import {
+  apiCreateInvoice,
+  apiUpdateInvoice,
+  apiListBankDetails,
+} from "../utils/api";
 import DummyPDF from "./DummyPDF";
 
 interface InvoiceFormProps {
@@ -211,6 +216,70 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showInvoiceNumberTip, setShowInvoiceNumberTip] = useState(false);
   const [hasSeenInvoiceNumberTip, setHasSeenInvoiceNumberTip] = useState(false);
+  const [bankDetailsList, setBankDetailsList] = useState<any[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string>("");
+
+  // Fetch bank details and set active bank detail
+  useEffect(() => {
+    (async () => {
+      try {
+        const body = await apiListBankDetails();
+        const list = Array.isArray(body)
+          ? body
+          : Array.isArray((body as any)?.data)
+          ? (body as any).data
+          : [];
+        setBankDetailsList(list);
+
+        // Find active bank detail and set it for new invoices only
+        if (!existingInvoice) {
+          const activeBankDetail = list.find((bd: any) => bd.active === true);
+          if (activeBankDetail) {
+            // Set the selected bank ID
+            setSelectedBankId(String(activeBankDetail.id));
+            // Convert bank detail to BankDetails format
+            const bankDetails = {
+              accountName:
+                activeBankDetail.accountName ??
+                activeBankDetail.account_name ??
+                "",
+              accountNumber:
+                activeBankDetail.accountNumber ??
+                activeBankDetail.account_number ??
+                "",
+              bankName:
+                activeBankDetail.bankName ?? activeBankDetail.bank_name ?? "",
+              branch:
+                activeBankDetail.bankBranch ?? activeBankDetail.branch ?? "",
+              ifsc: activeBankDetail.ifscCode ?? activeBankDetail.ifsc ?? "",
+            };
+            setInvoice((prev) => ({
+              ...prev,
+              bankDetails,
+            }));
+          }
+        }
+      } catch (_) {
+        // Fallback to default bank details if API fails
+      }
+    })();
+  }, [existingInvoice]);
+
+  // Update selected bank ID when invoice bank details change
+  useEffect(() => {
+    if (bankDetailsList.length > 0 && invoice.bankDetails) {
+      const matchingBank = bankDetailsList.find(
+        (bd) =>
+          (bd.accountName ?? bd.account_name) ===
+            invoice.bankDetails?.accountName &&
+          (bd.accountNumber ?? bd.account_number) ===
+            invoice.bankDetails?.accountNumber
+      );
+      if (matchingBank && String(matchingBank.id) !== selectedBankId) {
+        setSelectedBankId(String(matchingBank.id));
+      }
+    }
+  }, [invoice.bankDetails, bankDetailsList, selectedBankId]);
 
   useEffect(() => {
     if (existingInvoice) {
@@ -257,8 +326,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   }, [sameAsBilling, invoice.client]);
 
-  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedClient = clients.find((c) => c.id === e.target.value);
+  const handleClientChange = (selectedValue: string) => {
+    const selectedClient = clients.find((c) => c.id === selectedValue);
     if (selectedClient) {
       setInvoice({ ...invoice, client: selectedClient });
     } else {
@@ -266,12 +335,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const handleShippingClientChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const selectedClient = clients.find((c) => c.id === e.target.value);
+  const handleShippingClientChange = (selectedValue: string) => {
+    const selectedClient = clients.find((c) => c.id === selectedValue);
 
-    if (e.target.value) {
+    if (selectedValue) {
       setSameAsBilling(false);
     }
 
@@ -984,21 +1051,26 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <h3 className="font-bold bg-gray-200 text-center mb-2">
                 DETAIL OF RECEIVER (BILLED TO)
               </h3>
-              <select
-                id="client"
-                value={invoice.client.id}
-                onChange={handleClientChange}
-                className="mt-1 block w-full p-1 text-base bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2"
-              >
-                <option value="">
-                  Select a client or enter details manually
-                </option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mb-2">
+                <Dropdown
+                  id="client"
+                  value={invoice.client.id}
+                  onChange={handleClientChange}
+                  placeholder="Select a client or enter details manually"
+                  options={[
+                    {
+                      value: "",
+                      label: "Select a client or enter details manually",
+                    },
+                    ...clients.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    })),
+                  ]}
+                  searchable={true}
+                  className="mt-1"
+                />
+              </div>
               <FormField
                 label="Name"
                 name="name"
@@ -1053,23 +1125,27 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <label htmlFor="sameAsBilling">Same as billing</label>
                 </div>
               </div>
-              <select
-                id="shippingClient"
-                onChange={handleShippingClientChange}
-                disabled={sameAsBilling}
-                className={`mt-1 block w-full p-1 text-base bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2 ${
-                  sameAsBilling ? "bg-gray-100 cursor-not-allowed" : ""
-                }`}
-              >
-                <option value="">
-                  Select a client or enter details manually
-                </option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mb-2">
+                <Dropdown
+                  id="shippingClient"
+                  value=""
+                  onChange={handleShippingClientChange}
+                  disabled={sameAsBilling}
+                  placeholder="Select a client or enter details manually"
+                  options={[
+                    {
+                      value: "",
+                      label: "Select a client or enter details manually",
+                    },
+                    ...clients.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    })),
+                  ]}
+                  searchable={true}
+                  className="mt-1"
+                />
+              </div>
               <FormField
                 label="Name"
                 name="name"
@@ -1137,21 +1213,21 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 >
                   <div className="text-center p-1">{index + 1}</div>
 
-                  <input
-                    type="text"
-                    list="product-list"
-                    placeholder="Item description"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleItemChange(index, "description", e.target.value)
-                    }
-                    className="w-full p-1 border border-gray-300 bg-white text-gray-900"
-                  />
-                  <datalist id="product-list">
-                    {products.map((p) => (
-                      <option key={p.id} value={p.name} />
-                    ))}
-                  </datalist>
+                  <div className="relative">
+                    <Dropdown
+                      value={item.description}
+                      onChange={(value) =>
+                        handleItemChange(index, "description", value)
+                      }
+                      placeholder="Item description"
+                      options={products.map((p) => ({
+                        value: p.name,
+                        label: p.name,
+                      }))}
+                      searchable={true}
+                      className="w-full"
+                    />
+                  </div>
 
                   <input
                     type="text"
@@ -1335,6 +1411,49 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               onChange={handleInputChange}
             />
             <p className="font-bold underline">OUR BANK DETAIL :</p>
+            {bankDetailsList.length > 0 && (
+              <div className="mb-2">
+                <Dropdown
+                  value={selectedBankId}
+                  onChange={(selectedId) => {
+                    setSelectedBankId(selectedId);
+                    const selectedBank = bankDetailsList.find(
+                      (bd) => String(bd.id) === selectedId
+                    );
+                    if (selectedBank) {
+                      const bankDetails = {
+                        accountName:
+                          selectedBank.accountName ??
+                          selectedBank.account_name ??
+                          "",
+                        accountNumber:
+                          selectedBank.accountNumber ??
+                          selectedBank.account_number ??
+                          "",
+                        bankName:
+                          selectedBank.bankName ?? selectedBank.bank_name ?? "",
+                        branch:
+                          selectedBank.bankBranch ?? selectedBank.branch ?? "",
+                        ifsc: selectedBank.ifscCode ?? selectedBank.ifsc ?? "",
+                      };
+                      setInvoice((prev) => ({
+                        ...prev,
+                        bankDetails,
+                      }));
+                    }
+                  }}
+                  placeholder="Select bank account"
+                  options={bankDetailsList.map((bd) => ({
+                    value: String(bd.id),
+                    label: `${bd.bankName ?? bd.bank_name} - ${
+                      bd.accountNumber ?? bd.account_number
+                    }${bd.active === true ? " (Active)" : ""}`,
+                  }))}
+                  searchable={true}
+                  className="mb-2"
+                />
+              </div>
+            )}
             <FormField
               label="A/C NAME"
               name="accountName"
