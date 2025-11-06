@@ -155,6 +155,11 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clients,
   products,
 }) => {
+  console.log(existingInvoice, "existingInvoice");
+  console.log(profile, "profile");
+  console.log(invoices, "invoices");
+  console.log(clients, "clients");
+  console.log(products, "products");
   const emptyInvoice = useMemo(
     () => ({
       client: {
@@ -218,6 +223,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [hasSeenInvoiceNumberTip, setHasSeenInvoiceNumberTip] = useState(false);
   const [bankDetailsList, setBankDetailsList] = useState<any[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
+  const [logoBase64, setLogoBase64] = useState<string>("");
+  const [companySealBase64, setCompanySealBase64] = useState<string>("");
+  const [signatureBase64, setSignatureBase64] = useState<string>("");
 
   // Fetch bank details and set active bank detail
   useEffect(() => {
@@ -264,6 +272,136 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       }
     })();
   }, [existingInvoice]);
+
+  // Convert logo and other images to base64 for PDF
+  useEffect(() => {
+    const convertImageToBase64 = async (
+      imageUrl: string | undefined,
+      isLogo: boolean = false
+    ): Promise<string> => {
+      if (!imageUrl) return "";
+      // If already base64, return as is
+      if (imageUrl.startsWith("data:")) return imageUrl;
+
+      try {
+        // Ensure URL is absolute
+        let absoluteUrl = imageUrl;
+        if (imageUrl.startsWith("/api/")) {
+          const BASE_URL = "http://localhost:8080";
+          absoluteUrl = BASE_URL + imageUrl;
+        }
+
+        const headers: HeadersInit = {};
+        try {
+          const token = localStorage.getItem("zenbill_auth_token");
+          if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
+        } catch (_) {}
+
+        const response = await fetch(absoluteUrl, { headers });
+        if (!response.ok) {
+          console.error(
+            `Failed to fetch image: ${absoluteUrl}, status: ${response.status}`
+          );
+          return "";
+        }
+        const blob = await response.blob();
+
+        // Check if it's an .ico file - convert to PNG for react-pdf compatibility
+        const isIco =
+          absoluteUrl.toLowerCase().includes(".ico") ||
+          blob.type === "application/octet-stream" ||
+          blob.type === "image/x-icon" ||
+          blob.type === "image/vnd.microsoft.icon";
+
+        if (isIco && isLogo) {
+          console.log("Converting .ico to PNG for PDF compatibility");
+          // Convert .ico to PNG using canvas
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              try {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width || 128;
+                canvas.height = img.height || 128;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                  ctx.drawImage(img, 0, 0);
+                  canvas.toBlob((pngBlob) => {
+                    if (pngBlob) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        console.log("Successfully converted .ico to PNG");
+                        resolve(reader.result as string);
+                      };
+                      reader.onerror = reject;
+                      reader.readAsDataURL(pngBlob);
+                    } else {
+                      console.error("Failed to create PNG blob");
+                      reject(new Error("Failed to convert to PNG"));
+                    }
+                  }, "image/png");
+                } else {
+                  reject(new Error("Failed to get canvas context"));
+                }
+              } catch (err) {
+                console.error("Error in canvas conversion:", err);
+                reject(err);
+              }
+            };
+            img.onerror = (err) => {
+              console.error("Failed to load image for conversion:", err);
+              reject(err);
+            };
+            img.src = URL.createObjectURL(blob);
+          });
+        }
+
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error("Failed to read image data"));
+            }
+          };
+          reader.onerror = () => reject(new Error("Failed to read image"));
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error("Failed to convert image to base64:", imageUrl, error);
+        return "";
+      }
+    };
+
+    (async () => {
+      const logo = await convertImageToBase64(profile.logo, true);
+      const seal = await convertImageToBase64(profile.companySeal, false);
+      const signature = await convertImageToBase64(
+        profile.authorizedSignature,
+        false
+      );
+      console.log("Image conversion results:", {
+        logoOriginal: profile.logo,
+        logoConverted: logo
+          ? `${logo.substring(0, 30)}... (${logo.length} chars, type: ${
+              logo.split(";")[0]
+            })`
+          : "failed",
+        sealConverted: seal
+          ? `${seal.substring(0, 30)}... (${seal.length} chars)`
+          : "failed",
+        signatureConverted: signature
+          ? `${signature.substring(0, 30)}... (${signature.length} chars)`
+          : "failed",
+      });
+      setLogoBase64(logo);
+      setCompanySealBase64(seal);
+      setSignatureBase64(signature);
+    })();
+  }, [profile.logo, profile.companySeal, profile.authorizedSignature]);
 
   // Update selected bank ID when invoice bank details change
   useEffect(() => {
@@ -536,8 +674,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleDownloadPdf = async () => {
     try {
+      // Create profile with base64 images for PDF
+      const profileForPdf = {
+        ...profile,
+        logo: logoBase64 || profile.logo || "",
+        companySeal: companySealBase64 || profile.companySeal || "",
+        authorizedSignature:
+          signatureBase64 || profile.authorizedSignature || "",
+      };
       const blob = await pdf(
-        <DummyPDF invoice={previewInvoiceData} profile={profile} />
+        <DummyPDF invoice={previewInvoiceData} profile={profileForPdf} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -813,7 +959,17 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     style={{ width: "100%", height: "100%" }}
                     showToolbar
                   >
-                    <DummyPDF invoice={previewInvoiceData} profile={profile} />
+                    <DummyPDF
+                      invoice={previewInvoiceData}
+                      profile={{
+                        ...profile,
+                        logo: logoBase64 || profile.logo || "",
+                        companySeal:
+                          companySealBase64 || profile.companySeal || "",
+                        authorizedSignature:
+                          signatureBase64 || profile.authorizedSignature || "",
+                      }}
+                    />
                   </PDFViewer>
                 </div>
               </div>
@@ -906,6 +1062,23 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   src={profile.logo}
                   alt="Company Logo"
                   className="h-20 w-20 object-contain"
+                  onError={(e) => {
+                    console.error("Failed to load logo:", profile.logo);
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector(".logo-fallback")) {
+                      const fallback = document.createElement("div");
+                      fallback.className =
+                        "h-20 w-20 flex items-center justify-center bg-gray-100 rounded logo-fallback";
+                      fallback.innerHTML =
+                        '<span class="text-sm font-bold">LOGO</span>';
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                  onLoad={() => {
+                    console.log("Logo loaded successfully:", profile.logo);
+                  }}
                 />
               ) : (
                 <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded">
