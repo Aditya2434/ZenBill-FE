@@ -18,7 +18,6 @@ interface ProfileProps {
 
 export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
   const [formData, setFormData] = useState<CompanyProfile>(profile);
-  const [companyFeedback, setCompanyFeedback] = useState("");
   const [toast, setToast] = useState<{
     message: string;
     type: ToastType;
@@ -233,11 +232,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
       }
       // Store absolute URL in state for immediate display, but save relative to DB
       setFormData((prev) => ({ ...prev, logo: absoluteUrl || prev.logo }));
-      setCompanyFeedback("Logo uploaded");
+      showToast("Logo uploaded successfully", "success");
     } catch (_) {
-      setCompanyFeedback("Logo upload failed");
-    } finally {
-      setTimeout(() => setCompanyFeedback(""), 2000);
+      showToast("Logo upload failed", "error");
     }
   };
 
@@ -255,11 +252,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ...prev,
         companySeal: absoluteUrl || prev.companySeal,
       }));
-      setCompanyFeedback("Stamp uploaded");
+      showToast("Stamp uploaded successfully", "success");
     } catch (_) {
-      setCompanyFeedback("Stamp upload failed");
-    } finally {
-      setTimeout(() => setCompanyFeedback(""), 2000);
+      showToast("Stamp upload failed", "error");
     }
   };
 
@@ -283,16 +278,59 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ...prev,
         authorizedSignature: absoluteUrl || prev.authorizedSignature,
       }));
-      setCompanyFeedback("Signature uploaded");
+      showToast("Signature uploaded successfully", "success");
     } catch (_) {
-      setCompanyFeedback("Signature upload failed");
-    } finally {
-      setTimeout(() => setCompanyFeedback(""), 2000);
+      showToast("Signature upload failed", "error");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required company fields only
+    const missingFields: string[] = [];
+    let firstMissingFieldId: string | null = null;
+    
+    if (!formData.companyName?.trim()) {
+      missingFields.push("Company Name");
+      if (!firstMissingFieldId) firstMissingFieldId = "companyName";
+    }
+    if (!formData.companyAddress?.trim()) {
+      missingFields.push("Company Address");
+      if (!firstMissingFieldId) firstMissingFieldId = "companyAddress";
+    }
+    if (!formData.gstin?.trim()) {
+      missingFields.push("GSTIN");
+      if (!firstMissingFieldId) firstMissingFieldId = "gstin";
+    }
+    if (!formData.pan?.trim()) {
+      missingFields.push("PAN");
+      if (!firstMissingFieldId) firstMissingFieldId = "pan";
+    }
+    if (!formData.companyState?.trim()) {
+      missingFields.push("State");
+      if (!firstMissingFieldId) firstMissingFieldId = "companyState";
+    }
+    if (!formData.companyStateCode?.trim()) {
+      missingFields.push("State Code");
+      if (!firstMissingFieldId) firstMissingFieldId = "companyStateCode";
+    }
+
+    if (missingFields.length > 0) {
+      showToast(`Please fill required fields: ${missingFields.join(", ")}`, "error");
+      // Focus on the first missing field
+      if (firstMissingFieldId) {
+        setTimeout(() => {
+          const field = document.getElementById(firstMissingFieldId!);
+          if (field) {
+            field.focus();
+            field.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+      }
+      return;
+    }
+
     try {
       const BASE_URL = "http://localhost:8080";
 
@@ -334,11 +372,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
       };
       await apiUpdateCompany(payload);
       updateProfile(formData);
-      setCompanyFeedback("Company details saved successfully!");
+      showToast("Company details saved successfully!", "success");
     } catch (err: any) {
-      setCompanyFeedback(err?.message || "Failed to save company details");
-    } finally {
-      setTimeout(() => setCompanyFeedback(""), 3000);
+      showToast(err?.message || "Failed to save company details", "error");
     }
   };
 
@@ -356,7 +392,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         Update your company information and branding.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
             <label
@@ -398,7 +434,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="companyName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Company Name
+                Company Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -406,6 +442,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="companyName"
                 value={formData.companyName}
                 onChange={handleInputChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -431,7 +468,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="companyAddress"
                 className="block text-sm font-medium text-gray-700"
               >
-                Company Address
+                Company Address <span className="text-red-500">*</span>
               </label>
               <textarea
                 name="companyAddress"
@@ -439,6 +476,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 value={formData.companyAddress}
                 onChange={handleInputChange}
                 rows={2}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               ></textarea>
             </div>
@@ -522,7 +560,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               htmlFor="gstin"
               className="block text-sm font-medium text-gray-700"
             >
-              GSTIN
+              GSTIN <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -530,6 +568,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="gstin"
               value={formData.gstin}
               onChange={handleInputChange}
+              required
               className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
@@ -538,7 +577,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               htmlFor="pan"
               className="block text-sm font-medium text-gray-700"
             >
-              PAN
+              PAN <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -546,6 +585,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="pan"
               value={formData.pan}
               onChange={handleInputChange}
+              required
               className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
@@ -554,7 +594,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               htmlFor="companyState"
               className="block text-sm font-medium text-gray-700"
             >
-              State
+              State <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -562,6 +602,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyState"
               value={formData.companyState || ""}
               onChange={handleInputChange}
+              required
               className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
@@ -570,7 +611,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               htmlFor="companyStateCode"
               className="block text-sm font-medium text-gray-700"
             >
-              State Code
+              State Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -578,23 +619,54 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyStateCode"
               value={formData.companyStateCode || ""}
               onChange={handleInputChange}
+              required
               className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
         </div>
 
         <div className="flex justify-end items-center pt-6 border-t">
-          {companyFeedback && (
-            <span className="text-green-600 text-sm mr-4">
-              {companyFeedback}
-            </span>
-          )}
-          <button
-            type="submit"
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            save company Details
-          </button>
+          <div className="relative group">
+            {(() => {
+              const missingFields: string[] = [];
+              if (!formData.companyName?.trim()) missingFields.push("Company Name");
+              if (!formData.companyAddress?.trim()) missingFields.push("Company Address");
+              if (!formData.gstin?.trim()) missingFields.push("GSTIN");
+              if (!formData.pan?.trim()) missingFields.push("PAN");
+              if (!formData.companyState?.trim()) missingFields.push("State");
+              if (!formData.companyStateCode?.trim()) missingFields.push("State Code");
+              const isDisabled = missingFields.length > 0;
+
+              return (
+                <>
+                  <button
+                    type="submit"
+                    disabled={isDisabled}
+                    className={`px-6 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                      isDisabled
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    save company Details
+                  </button>
+                  {isDisabled && (
+                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
+                      <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
+                        <p className="font-semibold mb-1">Please fill required fields:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {missingFields.map((field, index) => (
+                            <li key={index}>{field}</li>
+                          ))}
+                        </ul>
+                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
 
         <div>
@@ -622,7 +694,6 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountName"
                 value={formData.defaultBankDetails.accountName}
                 onChange={handleBankDetailsChange}
-                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -639,7 +710,6 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountNumber"
                 value={formData.defaultBankDetails.accountNumber}
                 onChange={handleBankDetailsChange}
-                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -656,7 +726,6 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="bankName"
                 value={formData.defaultBankDetails.bankName}
                 onChange={handleBankDetailsChange}
-                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -673,7 +742,6 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="branch"
                 value={formData.defaultBankDetails.branch}
                 onChange={handleBankDetailsChange}
-                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -690,7 +758,6 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="ifsc"
                 value={formData.defaultBankDetails.ifsc}
                 onChange={handleBankDetailsChange}
-                required
                 maxLength={11}
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
