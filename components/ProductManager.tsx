@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Product } from "../types";
 import { PlusIcon } from "./icons";
+import { Toast, ToastType } from "./Toast";
+import { DataTable, Column } from "./DataTable";
 
 interface ProductManagerProps {
   products: Product[];
@@ -29,9 +31,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 }) => {
   const [formData, setFormData] = useState(emptyProduct);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [feedback, setFeedback] = useState("");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+    isVisible: boolean;
+  }>({
+    message: "",
+    type: "success",
+    isVisible: false,
+  });
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    id?: string;
+    name?: string;
+  }>({ open: false });
+
+  const showToast = (message: string, type: ToastType) => {
+    // Automatically replace any existing toast with the new one
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  };
 
   useEffect(() => {
     if (editingProduct) {
@@ -47,27 +71,42 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Convert UOM input to uppercase
+    const processedValue = name === "uom" ? value.toUpperCase() : value;
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    if (!formData.name) return;
+
+    // Validate required fields
+    const missingFields: string[] = [];
+    if (!formData.name?.trim()) missingFields.push("Product Name");
+    if (!formData.hsnCode?.trim()) missingFields.push("HSN Code");
+    if (!formData.uom?.trim()) missingFields.push("UOM");
+
+    if (missingFields.length > 0) {
+      setErrorMsg(`Please fill required fields: ${missingFields.join(", ")}`);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       if (editingProduct) {
         updateProduct({ ...editingProduct, ...formData });
-        setFeedback(`Product "${formData.name}" updated successfully!`);
+        showToast(
+          `Product "${formData.name}" updated successfully!`,
+          "success"
+        );
       } else {
         await addProduct(formData);
-        setFeedback(`Product "${formData.name}" added successfully!`);
+        showToast(`Product "${formData.name}" added successfully!`, "success");
         setFormData(emptyProduct);
       }
       setEditingProduct(null);
-      setTimeout(() => setFeedback(""), 3000);
     } catch (err: any) {
-      setErrorMsg(err?.message || "Operation failed.");
+      showToast(err?.message || "Operation failed.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -75,25 +114,57 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    window.scrollTo(0, 0);
+    // Scroll to the form
+    setTimeout(() => {
+      const productForm = document.getElementById("product-form");
+      if (productForm) {
+        productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo(0, 0);
+      }
+    }, 100);
   };
 
   const handleCancelEdit = () => {
     setEditingProduct(null);
   };
 
+  const confirmDeleteProduct = (product: Product) => {
+    setDeleteConfirm({
+      open: true,
+      id: product.id,
+      name: product.name,
+    });
+  };
+
+  const performDeleteProduct = async () => {
+    if (!deleteConfirm.id) return;
+    try {
+      deleteProduct(deleteConfirm.id);
+      showToast(
+        `Product "${deleteConfirm.name}" deleted successfully!`,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(err?.message || "Failed to delete product", "error");
+    } finally {
+      setDeleteConfirm({ open: false });
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {feedback && (
-        <div
-          className="fixed top-20 right-5 z-50 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-lg"
-          role="alert"
-        >
-          <p className="font-bold">Success</p>
-          <p>{feedback}</p>
-        </div>
-      )}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        duration={3000}
+      />
+      <div
+        id="product-form"
+        className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+      >
         <h2 className="text-xl font-bold text-gray-800">
           {editingProduct ? "Edit Product" : "Add New Product"}
         </h2>
@@ -114,7 +185,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 htmlFor="name"
                 className="block text-sm font-medium text-gray-700"
               >
-                Product Name
+                Product Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -131,7 +202,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 htmlFor="hsnCode"
                 className="block text-sm font-medium text-gray-700"
               >
-                HSN Code
+                HSN Code <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -139,6 +210,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 id="hsnCode"
                 value={formData.hsnCode}
                 onChange={handleInputChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -147,7 +219,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 htmlFor="uom"
                 className="block text-sm font-medium text-gray-700"
               >
-                UOM (Unit of Measurement)
+                UOM (Unit of Measurement){" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -155,7 +228,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 id="uom"
                 value={formData.uom}
                 onChange={handleInputChange}
-                placeholder="e.g., pcs, kg, hrs"
+                placeholder="e.g., PCS, KG, HRS"
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -170,24 +244,55 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 Cancel
               </button>
             )}
-            <button
-              disabled={isSubmitting}
-              type="submit"
-              className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                isSubmitting
-                  ? "bg-blue-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              <PlusIcon className="w-4 h-4 mr-2" />
-              {isSubmitting
-                ? editingProduct
-                  ? "Saving..."
-                  : "Adding..."
-                : editingProduct
-                ? "Save Changes"
-                : "Add Product"}
-            </button>
+            <div className="relative group">
+              {(() => {
+                const missingFields: string[] = [];
+                if (!formData.name?.trim()) missingFields.push("Product Name");
+                if (!formData.hsnCode?.trim()) missingFields.push("HSN Code");
+                if (!formData.uom?.trim()) missingFields.push("UOM");
+                const isDisabled = missingFields.length > 0 || isSubmitting;
+
+                return (
+                  <>
+                    <button
+                      disabled={isDisabled}
+                      type="submit"
+                      className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                        isDisabled
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700"
+                      }`}
+                    >
+                      <PlusIcon className="w-4 h-4 mr-2" />
+                      {isSubmitting
+                        ? editingProduct
+                          ? "Saving..."
+                          : "Adding..."
+                        : editingProduct
+                        ? "Save Changes"
+                        : "Add Product"}
+                    </button>
+                    {isDisabled &&
+                      !isSubmitting &&
+                      missingFields.length > 0 && (
+                        <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
+                          <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
+                            <p className="font-semibold mb-1">
+                              Please fill required fields:
+                            </p>
+                            <ul className="list-disc list-inside space-y-0.5">
+                              {missingFields.map((field, index) => (
+                                <li key={index}>{field}</li>
+                              ))}
+                            </ul>
+                            <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                          </div>
+                        </div>
+                      )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </form>
       </div>
@@ -212,62 +317,78 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             {error}
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3">
-                  Name
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  HSN Code
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  UOM
-                </th>
-                <th scope="col" className="px-6 py-3 text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr
-                  key={product.id}
-                  className="bg-white border-b hover:bg-gray-50"
+        <div className="p-6">
+          <DataTable<Product>
+            data={products}
+            columns={[
+              {
+                header: "Name",
+                accessor: "name",
+                className: "font-medium text-gray-900",
+              },
+              {
+                header: "HSN Code",
+                accessor: "hsnCode",
+              },
+              {
+                header: "UOM",
+                accessor: "uom",
+              },
+            ]}
+            searchable={true}
+            searchPlaceholder="Search products by name, HSN code, or UOM..."
+            searchKeys={["name", "hsnCode", "uom"]}
+            itemsPerPage={10}
+            emptyMessage="No products found. Add one using the form above."
+            renderActions={(product) => (
+              <>
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="font-medium text-blue-600 hover:underline"
                 >
-                  <td className="px-6 py-4 font-medium text-gray-900">
-                    {product.name}
-                  </td>
-                  <td className="px-6 py-4">{product.hsnCode || "-"}</td>
-                  <td className="px-6 py-4">{product.uom || "-"}</td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteProduct(product.id)}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {products.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-center py-10 text-gray-500">
-                    No products found. Add one using the form above.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  Edit
+                </button>
+                <button
+                  onClick={() => confirmDeleteProduct(product)}
+                  className="font-medium text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          />
         </div>
       </div>
+
+      {deleteConfirm.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-medium text-gray-900">
+              Delete product?
+            </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              Are you sure you want to delete "{deleteConfirm.name}"? This
+              action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm({ open: false })}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={performDeleteProduct}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
