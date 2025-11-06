@@ -110,7 +110,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -126,7 +126,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                 id="gstin"
                 value={formData.gstin}
                 onChange={handleInputChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
           </div>
@@ -161,7 +161,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                 id="state"
                 value={formData.state}
                 onChange={handleInputChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -177,7 +177,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                 id="stateCode"
                 value={formData.stateCode}
                 onChange={handleInputChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
           </div>

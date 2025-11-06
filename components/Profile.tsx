@@ -38,6 +38,22 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     name?: string;
   }>({ open: false });
 
+  const generateAcronym = (companyName: string): string => {
+    if (!companyName || !companyName.trim()) return "";
+    return companyName
+      .trim()
+      .split(/\s+/)
+      .map((word) => {
+        // Find the first alphabetic character in the word
+        const firstLetter = word
+          .split("")
+          .find((char) => /[a-zA-Z]/.test(char));
+        return firstLetter ? firstLetter.toUpperCase() : "";
+      })
+      .filter((letter) => letter !== "") // Remove empty strings from words with no letters
+      .join("");
+  };
+
   useEffect(() => {
     setFormData(profile);
   }, [profile]);
@@ -60,20 +76,28 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
           return url;
         };
 
-        setFormData((prev) => ({
-          ...prev,
-          companyName: d.companyName || prev.companyName,
-          companyAddress: d.companyAddress || prev.companyAddress,
-          gstin: d.gstinNo || prev.gstin,
-          pan: d.panNumber || prev.pan,
-          companyState: d.state || prev.companyState,
-          companyStateCode: d.code || prev.companyStateCode,
-          logo: toAbsoluteUrl(d.companyLogoUrl) || prev.logo,
-          companySeal: toAbsoluteUrl(d.companyStampUrl) || prev.companySeal,
-          authorizedSignature:
-            toAbsoluteUrl(d.signatureUrl) || prev.authorizedSignature,
-          companyAcronym: d.invoicePrefix || prev.companyAcronym,
-        }));
+        setFormData((prev) => {
+          const companyName = d.companyName || prev.companyName;
+          const companyAcronym = d.invoicePrefix || prev.companyAcronym;
+          // Auto-generate acronym if company name exists but acronym is empty
+          const finalAcronym =
+            companyAcronym ||
+            (companyName ? generateAcronym(companyName) : prev.companyAcronym);
+          return {
+            ...prev,
+            companyName,
+            companyAddress: d.companyAddress || prev.companyAddress,
+            gstin: d.gstinNo || prev.gstin,
+            pan: d.panNumber || prev.pan,
+            companyState: d.state || prev.companyState,
+            companyStateCode: d.code || prev.companyStateCode,
+            logo: toAbsoluteUrl(d.companyLogoUrl) || prev.logo,
+            companySeal: toAbsoluteUrl(d.companyStampUrl) || prev.companySeal,
+            authorizedSignature:
+              toAbsoluteUrl(d.signatureUrl) || prev.authorizedSignature,
+            companyAcronym: finalAcronym,
+          };
+        });
       } catch (_) {}
     })();
   }, []);
@@ -96,7 +120,25 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      // Handle company acronym based on company name changes
+      if (name === "companyName") {
+        if (!value || !value.trim()) {
+          // Clear acronym when company name is emptied
+          updated.companyAcronym = "";
+        } else {
+          // Auto-generate acronym on every keystroke when company name changes
+          const generatedAcronym = generateAcronym(value);
+          if (generatedAcronym) {
+            updated.companyAcronym = generatedAcronym;
+          } else {
+            updated.companyAcronym = "";
+          }
+        }
+      }
+      return updated;
+    });
   };
 
   // Bank list handlers - use upper section for add/edit
@@ -115,6 +157,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
   };
 
   const showToast = (message: string, type: ToastType) => {
+    // Automatically replace any existing toast with the new one
     setToast({ message, type, isVisible: true });
   };
 
@@ -178,6 +221,13 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ifsc: bd.ifscCode ?? bd.ifsc ?? "",
       },
     }));
+    // Scroll to Bank Details form
+    setTimeout(() => {
+      const bankDetailsForm = document.getElementById("bank-details-form");
+      if (bankDetailsForm) {
+        bankDetailsForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 100);
   };
 
   const confirmDeleteBank = (bd: any) => {
@@ -286,11 +336,11 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required company fields only
     const missingFields: string[] = [];
     let firstMissingFieldId: string | null = null;
-    
+
     if (!formData.companyName?.trim()) {
       missingFields.push("Company Name");
       if (!firstMissingFieldId) firstMissingFieldId = "companyName";
@@ -317,7 +367,10 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     }
 
     if (missingFields.length > 0) {
-      showToast(`Please fill required fields: ${missingFields.join(", ")}`, "error");
+      showToast(
+        `Please fill required fields: ${missingFields.join(", ")}`,
+        "error"
+      );
       // Focus on the first missing field
       if (firstMissingFieldId) {
         setTimeout(() => {
@@ -443,7 +496,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 value={formData.companyName}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -451,7 +504,32 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="companyAcronym"
                 className="block text-sm font-medium text-gray-700"
               >
-                Company Acronym (for Invoices)
+                <div className="flex items-center gap-2">
+                  <span>Company Acronym (for Invoices)</span>
+                  <div className="relative group">
+                    <svg
+                      className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-64">
+                      <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg">
+                        <p>
+                          This acronym is used in invoice numbers. Default will
+                          be the first letter of every word in your company
+                          name.
+                        </p>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </label>
               <input
                 type="text"
@@ -459,8 +537,12 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="companyAcronym"
                 value={formData.companyAcronym}
                 onChange={handleInputChange}
-                placeholder="e.g., PRM"
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                placeholder={
+                  formData.companyName
+                    ? `Default: ${generateAcronym(formData.companyName)}`
+                    : "e.g., PRM"
+                }
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -477,7 +559,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 onChange={handleInputChange}
                 rows={2}
                 required
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               ></textarea>
             </div>
           </div>
@@ -629,12 +711,15 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
           <div className="relative group">
             {(() => {
               const missingFields: string[] = [];
-              if (!formData.companyName?.trim()) missingFields.push("Company Name");
-              if (!formData.companyAddress?.trim()) missingFields.push("Company Address");
+              if (!formData.companyName?.trim())
+                missingFields.push("Company Name");
+              if (!formData.companyAddress?.trim())
+                missingFields.push("Company Address");
               if (!formData.gstin?.trim()) missingFields.push("GSTIN");
               if (!formData.pan?.trim()) missingFields.push("PAN");
               if (!formData.companyState?.trim()) missingFields.push("State");
-              if (!formData.companyStateCode?.trim()) missingFields.push("State Code");
+              if (!formData.companyStateCode?.trim())
+                missingFields.push("State Code");
               const isDisabled = missingFields.length > 0;
 
               return (
@@ -653,7 +738,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                   {isDisabled && (
                     <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
                       <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
-                        <p className="font-semibold mb-1">Please fill required fields:</p>
+                        <p className="font-semibold mb-1">
+                          Please fill required fields:
+                        </p>
                         <ul className="list-disc list-inside space-y-0.5">
                           {missingFields.map((field, index) => (
                             <li key={index}>{field}</li>
@@ -669,16 +756,9 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
           </div>
         </div>
 
-        <div>
-          <div className="flex items-center justify-between border-t pt-6">
+        <div id="bank-details-form">
+          <div className="border-t pt-6">
             <h3 className="text-lg font-medium text-gray-900">Bank Details</h3>
-            <button
-              type="button"
-              onClick={addNewBank}
-              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Add New
-            </button>
           </div>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -694,7 +774,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountName"
                 value={formData.defaultBankDetails.accountName}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -710,7 +790,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountNumber"
                 value={formData.defaultBankDetails.accountNumber}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -726,7 +806,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="bankName"
                 value={formData.defaultBankDetails.bankName}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -742,7 +822,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="branch"
                 value={formData.defaultBankDetails.branch}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -759,7 +839,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 value={formData.defaultBankDetails.ifsc}
                 onChange={handleBankDetailsChange}
                 maxLength={11}
-                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
           </div>
@@ -769,11 +849,16 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
           <div className="relative group">
             {(() => {
               const missingFields: string[] = [];
-              if (!formData.defaultBankDetails.bankName) missingFields.push("Bank Name");
-              if (!formData.defaultBankDetails.accountName) missingFields.push("Account Name");
-              if (!formData.defaultBankDetails.accountNumber) missingFields.push("Account Number");
-              if (!formData.defaultBankDetails.branch) missingFields.push("Branch");
-              if (!formData.defaultBankDetails.ifsc) missingFields.push("IFSC Code");
+              if (!formData.defaultBankDetails.bankName)
+                missingFields.push("Bank Name");
+              if (!formData.defaultBankDetails.accountName)
+                missingFields.push("Account Name");
+              if (!formData.defaultBankDetails.accountNumber)
+                missingFields.push("Account Number");
+              if (!formData.defaultBankDetails.branch)
+                missingFields.push("Branch");
+              if (!formData.defaultBankDetails.ifsc)
+                missingFields.push("IFSC Code");
               const isDisabled = missingFields.length > 0;
 
               return (
@@ -789,13 +874,15 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                     }`}
                   >
                     {selectedBankId != null
-                      ? "Update Bank Details"
+                      ? "Edit Bank Details"
                       : "Add Bank Details"}
                   </button>
                   {isDisabled && (
                     <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
                       <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
-                        <p className="font-semibold mb-1">Please fill required fields:</p>
+                        <p className="font-semibold mb-1">
+                          Please fill required fields:
+                        </p>
                         <ul className="list-disc list-inside space-y-0.5">
                           {missingFields.map((field, index) => (
                             <li key={index}>{field}</li>
@@ -846,12 +933,14 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                     <td className="px-6 py-3">{bd.ifscCode ?? bd.ifsc}</td>
                     <td className="px-6 py-3 text-right space-x-2">
                       <button
+                        type="button"
                         onClick={() => startEditBank(bd)}
                         className="font-medium text-blue-600 hover:underline"
                       >
                         Edit
                       </button>
                       <button
+                        type="button"
                         onClick={() => confirmDeleteBank(bd)}
                         className="font-medium text-red-600 hover:underline"
                       >
