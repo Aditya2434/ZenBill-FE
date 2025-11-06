@@ -61,7 +61,9 @@ export function apiListInvoices() {
 }
 
 export function apiGetInvoiceDetails(invoiceId: string | number) {
-  return request(`/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/details`);
+  return request(
+    `/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/details`
+  );
 }
 
 export function apiUpdateInvoice(invoiceId: string | number, payload: any) {
@@ -73,16 +75,16 @@ export function apiUpdateInvoice(invoiceId: string | number, payload: any) {
 
 // Company API
 export function apiGetCompany() {
-  return request('/api/v1/company');
+  return request("/api/v1/company");
 }
 
 export function apiUpdateCompany(payload: any) {
-  return request('/api/v1/company', { method: 'PUT', json: payload });
+  return request("/api/v1/company", { method: "PUT", json: payload });
 }
 
 // Bank Details API
 export function apiListBankDetails() {
-  return request('/api/v1/bank-details');
+  return request("/api/v1/bank-details");
 }
 
 export function apiCreateBankDetail(payload: {
@@ -96,41 +98,55 @@ export function apiCreateBankDetail(payload: {
     bankName: payload.bankName,
     accountName: payload.accountName,
     accountNumber: payload.accountNumber,
-    bankBranch: payload.branch || '',
+    bankBranch: payload.branch || "",
     ifscCode: payload.ifsc,
   };
-  return request('/api/v1/bank-details', { method: 'POST', json: body });
+  return request("/api/v1/bank-details", { method: "POST", json: body });
 }
 
-export function apiUpdateBankDetail(bankDetailId: string | number, payload: {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  ifsc: string;
-  branch?: string;
-}) {
+export function apiUpdateBankDetail(
+  bankDetailId: string | number,
+  payload: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    ifsc: string;
+    branch?: string;
+    active?: boolean;
+  }
+) {
   const body = {
     bankName: payload.bankName,
     accountName: payload.accountName,
     accountNumber: payload.accountNumber,
-    bankBranch: payload.branch || '',
+    bankBranch: payload.branch || "",
     ifscCode: payload.ifsc,
+    active: payload.active,
   };
-  return request(`/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`, { method: 'PUT', json: body });
+  return request(
+    `/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`,
+    { method: "PUT", json: body }
+  );
 }
 
 export async function apiDeleteBankDetail(bankDetailId: string | number) {
   // Prefer RESTful path; fallback to body if BE expects no id in path
   try {
-    return await request(`/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`, { method: 'DELETE' });
+    return await request(
+      `/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`,
+      { method: "DELETE" }
+    );
   } catch (e) {
-    return await request('/api/v1/bank-details', { method: 'DELETE', json: { id: bankDetailId } });
+    return await request("/api/v1/bank-details", {
+      method: "DELETE",
+      json: { id: bankDetailId },
+    });
   }
 }
 
 // Clients API
 export function apiListClients() {
-  return request('/api/v1/clients');
+  return request("/api/v1/clients");
 }
 
 export function apiGetClient(clientId: string | number) {
@@ -147,32 +163,40 @@ export function apiCreateClient(payload: {
   const body = {
     clientName: payload.name,
     clientAddress: payload.address,
-    gstinNo: payload.gstin || '',
-    state: payload.state || '',
-    code: payload.stateCode || '',
+    gstinNo: payload.gstin || "",
+    state: payload.state || "",
+    code: payload.stateCode || "",
   };
-  return request('/api/v1/clients', { method: 'POST', json: body });
+  return request("/api/v1/clients", { method: "POST", json: body });
 }
 
-export function apiUpdateClient(clientId: string | number, payload: {
-  name: string;
-  address: string;
-  gstin?: string;
-  state?: string;
-  stateCode?: string;
-}) {
+export function apiUpdateClient(
+  clientId: string | number,
+  payload: {
+    name: string;
+    address: string;
+    gstin?: string;
+    state?: string;
+    stateCode?: string;
+  }
+) {
   const body = {
     clientName: payload.name,
     clientAddress: payload.address,
-    gstinNo: payload.gstin || '',
-    state: payload.state || '',
-    code: payload.stateCode || '',
+    gstinNo: payload.gstin || "",
+    state: payload.state || "",
+    code: payload.stateCode || "",
   };
-  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, { method: 'PUT', json: body });
+  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, {
+    method: "PUT",
+    json: body,
+  });
 }
 
 export function apiDeleteClient(clientId: string | number) {
-  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, { method: 'DELETE' });
+  return request(`/api/v1/clients/${encodeURIComponent(String(clientId))}`, {
+    method: "DELETE",
+  });
 }
 
 export function apiGetProduct(productId: string) {
@@ -208,18 +232,26 @@ export function apiCreateProduct(payload: {
 }
 
 // Storage API (Supabase via backend)
-export async function apiStorageUpload(file: File, folder: string, bucket?: string) {
+export async function apiStorageUpload(
+  file: File,
+  folder: string,
+  bucket?: string
+) {
   const url = new URL(`${BASE_URL}/api/v1/storage/upload`);
-  if (folder) url.searchParams.set('folder', folder);
-  if (bucket) url.searchParams.set('bucket', bucket);
+  if (folder) url.searchParams.set("folder", folder);
+  if (bucket) url.searchParams.set("bucket", bucket);
   const form = new FormData();
-  form.append('file', file);
+  form.append("file", file);
   const headers: HeadersInit = {};
   try {
     const token = localStorage.getItem("zenbill_auth_token");
     if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
   } catch (_) {}
-  const res = await fetch(url.toString(), { method: 'POST', body: form, headers });
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    body: form,
+    headers,
+  });
   const dataText = await res.text();
   let data: any = undefined;
   try {
@@ -228,29 +260,39 @@ export async function apiStorageUpload(file: File, folder: string, bucket?: stri
     data = dataText;
   }
   if (!res.ok) {
-    const message = (data && (data.message || data.error)) || res.statusText || 'Upload failed';
+    const message =
+      (data && (data.message || data.error)) ||
+      res.statusText ||
+      "Upload failed";
     throw new Error(message);
   }
   // Return the inner payload so callers can access fields like url directly
-  return (data && data.data) ? data.data : data;
+  return data && data.data ? data.data : data;
 }
 
-export function apiStorageSignUrl(payload: { bucket?: string; path: string; expiresIn?: number }) {
-  return request('/api/v1/storage/sign-url', { method: 'POST', json: payload });
+export function apiStorageSignUrl(payload: {
+  bucket?: string;
+  path: string;
+  expiresIn?: number;
+}) {
+  return request("/api/v1/storage/sign-url", { method: "POST", json: payload });
 }
 
 // Fetch image through backend proxy (for private buckets)
-export async function apiStorageGetImage(bucket: string, path: string): Promise<string> {
+export async function apiStorageGetImage(
+  bucket: string,
+  path: string
+): Promise<string> {
   const url = new URL(`${BASE_URL}/api/v1/storage/image`);
-  url.searchParams.set('bucket', bucket);
-  url.searchParams.set('path', path);
+  url.searchParams.set("bucket", bucket);
+  url.searchParams.set("path", path);
   const headers: HeadersInit = {};
   try {
     const token = localStorage.getItem("zenbill_auth_token");
     if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
   } catch (_) {}
   const res = await fetch(url.toString(), { headers });
-  if (!res.ok) throw new Error('Failed to fetch image');
+  if (!res.ok) throw new Error("Failed to fetch image");
   const blob = await res.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

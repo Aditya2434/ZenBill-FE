@@ -257,6 +257,46 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     }
   };
 
+  const handleToggleActive = async (
+    bankDetailId: string | number,
+    currentActive: boolean
+  ) => {
+    try {
+      // Find the bank detail to get all its data
+      const bankDetail = bankDetails.find((bd) => bd.id === bankDetailId);
+      if (!bankDetail) return;
+
+      const payload = {
+        bankName: bankDetail.bankName ?? bankDetail.bank_name ?? "",
+        accountName: bankDetail.accountName ?? bankDetail.account_name ?? "",
+        accountNumber:
+          bankDetail.accountNumber ?? bankDetail.account_number ?? "",
+        branch: bankDetail.bankBranch ?? bankDetail.branch ?? "",
+        ifsc: bankDetail.ifscCode ?? bankDetail.ifsc ?? "",
+        active: !currentActive, // Toggle active status
+      };
+
+      await apiUpdateBankDetail(bankDetailId, payload);
+      showToast(
+        `Bank detail ${
+          !currentActive ? "activated" : "deactivated"
+        } successfully`,
+        "success"
+      );
+
+      // Refresh the list
+      const body = await apiListBankDetails();
+      const list = Array.isArray(body)
+        ? body
+        : Array.isArray((body as any)?.data)
+        ? (body as any).data
+        : [];
+      setBankDetails(list);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to update bank detail status", "error");
+    }
+  };
+
   const handleBankDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -917,38 +957,69 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 </tr>
               </thead>
               <tbody>
-                {bankDetails.map((bd) => (
-                  <tr
-                    key={bd.id}
-                    className="bg-white border-b hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-3">{bd.bankName ?? bd.bank_name}</td>
-                    <td className="px-6 py-3">
-                      {bd.accountName ?? bd.account_name}
-                    </td>
-                    <td className="px-6 py-3">
-                      {bd.accountNumber ?? bd.account_number}
-                    </td>
-                    <td className="px-6 py-3">{bd.bankBranch ?? bd.branch}</td>
-                    <td className="px-6 py-3">{bd.ifscCode ?? bd.ifsc}</td>
-                    <td className="px-6 py-3 text-right space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => startEditBank(bd)}
-                        className="font-medium text-blue-600 hover:underline"
+                {(() => {
+                  // Sort bank details: active accounts first
+                  const sortedBankDetails = [...bankDetails].sort((a, b) => {
+                    const aActive = a.active === true;
+                    const bActive = b.active === true;
+                    if (aActive && !bActive) return -1;
+                    if (!aActive && bActive) return 1;
+                    return 0;
+                  });
+
+                  return sortedBankDetails.map((bd) => {
+                    const isActive = bd.active === true;
+                    return (
+                      <tr
+                        key={bd.id}
+                        className={`bg-white border-b hover:bg-gray-50 ${
+                          isActive ? "bg-green-50" : ""
+                        }`}
                       >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => confirmDeleteBank(bd)}
-                        className="font-medium text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        <td className="px-6 py-3">
+                          {bd.bankName ?? bd.bank_name}
+                        </td>
+                        <td className="px-6 py-3">
+                          {bd.accountName ?? bd.account_name}
+                        </td>
+                        <td className="px-6 py-3">
+                          {bd.accountNumber ?? bd.account_number}
+                        </td>
+                        <td className="px-6 py-3">
+                          {bd.bankBranch ?? bd.branch}
+                        </td>
+                        <td className="px-6 py-3">{bd.ifscCode ?? bd.ifsc}</td>
+                        <td className="px-6 py-3 text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(bd.id, isActive)}
+                            className={`font-medium px-3 py-1 text-xs rounded ${
+                              isActive
+                                ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                : "text-green-600 hover:text-green-700 hover:bg-green-50"
+                            }`}
+                          >
+                            {isActive ? "Deactivate" : "Activate"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEditBank(bd)}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmDeleteBank(bd)}
+                            className="font-medium text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
                 {bankDetails.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center py-10 text-gray-500">
