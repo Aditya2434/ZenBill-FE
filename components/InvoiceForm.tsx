@@ -901,7 +901,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             setShowInvoiceNumberTip(true);
                           }
                         }}
-                        className="p-1 w-16 text-sm text-gray-900 bg-white focus:outline-none"
+                        className="p-1 w-16 text-sm text-gray-900 bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         maxLength={3}
                       />
                     </div>
@@ -988,7 +988,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 id="client"
                 value={invoice.client.id}
                 onChange={handleClientChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white text-gray-900 border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2"
+                className="mt-1 block w-full p-1 text-base bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2"
               >
                 <option value="">
                   Select a client or enter details manually
@@ -1057,7 +1057,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 id="shippingClient"
                 onChange={handleShippingClientChange}
                 disabled={sameAsBilling}
-                className={`mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white text-gray-900 border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2 ${
+                className={`mt-1 block w-full p-1 text-base bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md mb-2 ${
                   sameAsBilling ? "bg-gray-100 cursor-not-allowed" : ""
                 }`}
               >

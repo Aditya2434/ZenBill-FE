@@ -123,7 +123,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -139,7 +139,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 id="hsnCode"
                 value={formData.hsnCode}
                 onChange={handleInputChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -156,7 +156,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 value={formData.uom}
                 onChange={handleInputChange}
                 placeholder="e.g., pcs, kg, hrs"
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
           </div>

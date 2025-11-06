@@ -374,7 +374,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="companyName"
                 value={formData.companyName}
                 onChange={handleInputChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -391,7 +391,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 value={formData.companyAcronym}
                 onChange={handleInputChange}
                 placeholder="e.g., PRM"
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -407,7 +407,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 value={formData.companyAddress}
                 onChange={handleInputChange}
                 rows={2}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               ></textarea>
             </div>
           </div>
@@ -498,7 +498,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="gstin"
               value={formData.gstin}
               onChange={handleInputChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -514,7 +514,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="pan"
               value={formData.pan}
               onChange={handleInputChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -530,7 +530,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyState"
               value={formData.companyState || ""}
               onChange={handleInputChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -546,7 +546,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyStateCode"
               value={formData.companyStateCode || ""}
               onChange={handleInputChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
         </div>
@@ -588,7 +588,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountName"
                 value={formData.defaultBankDetails.accountName}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -604,7 +604,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountNumber"
                 value={formData.defaultBankDetails.accountNumber}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -620,7 +620,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="bankName"
                 value={formData.defaultBankDetails.bankName}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -636,7 +636,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="branch"
                 value={formData.defaultBankDetails.branch}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
             <div>
@@ -652,7 +652,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="ifsc"
                 value={formData.defaultBankDetails.ifsc}
                 onChange={handleBankDetailsChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+                className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
           </div>
