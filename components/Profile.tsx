@@ -9,6 +9,7 @@ import {
   apiUpdateBankDetail,
   apiDeleteBankDetail,
 } from "../utils/api";
+import { Toast, ToastType } from "./Toast";
 
 interface ProfileProps {
   profile: CompanyProfile;
@@ -17,7 +18,16 @@ interface ProfileProps {
 
 export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
   const [formData, setFormData] = useState<CompanyProfile>(profile);
-  const [feedback, setFeedback] = useState("");
+  const [companyFeedback, setCompanyFeedback] = useState("");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+    isVisible: boolean;
+  }>({
+    message: "",
+    type: "success",
+    isVisible: false,
+  });
   // Uploads are now routed via backend using Supabase service role for private storage
   const [bankDetails, setBankDetails] = useState<any[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<string | number | null>(
@@ -105,6 +115,14 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
     }));
   };
 
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  };
+
   const handleSaveBankDetails = async () => {
     try {
       const payload = {
@@ -115,16 +133,15 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ifsc: (formData.defaultBankDetails.ifsc || "").toUpperCase().trim(),
       };
       if (payload.ifsc.length !== 11) {
-        setFeedback("IFSC code must be 11 characters");
-        setTimeout(() => setFeedback(""), 3000);
+        showToast("IFSC code must be 11 characters", "error");
         return;
       }
       if (selectedBankId != null) {
         await apiUpdateBankDetail(selectedBankId, payload);
-        setFeedback("Bank details updated");
+        showToast("Bank details updated successfully", "success");
       } else {
         await apiCreateBankDetail(payload);
-        setFeedback("Bank details added");
+        showToast("Bank details added successfully", "success");
       }
       const body = await apiListBankDetails();
       const list = Array.isArray(body)
@@ -134,10 +151,19 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         : [];
       setBankDetails(list);
       setSelectedBankId(null);
+      // Clear form after successful save
+      setFormData((prev) => ({
+        ...prev,
+        defaultBankDetails: {
+          bankName: "",
+          accountName: "",
+          accountNumber: "",
+          branch: "",
+          ifsc: "",
+        },
+      }));
     } catch (err: any) {
-      setFeedback(err?.message || "Failed to save bank details");
-    } finally {
-      setTimeout(() => setFeedback(""), 3000);
+      showToast(err?.message || "Failed to save bank details", "error");
     }
   };
 
@@ -174,12 +200,11 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ? (body as any).data
         : [];
       setBankDetails(list);
-      setFeedback("Bank detail deleted");
+      showToast("Bank detail deleted successfully", "success");
     } catch (err: any) {
-      setFeedback(err?.message || "Failed to delete");
+      showToast(err?.message || "Failed to delete", "error");
     } finally {
       setDeleteConfirm({ open: false });
-      setTimeout(() => setFeedback(""), 2000);
     }
   };
 
@@ -208,11 +233,11 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
       }
       // Store absolute URL in state for immediate display, but save relative to DB
       setFormData((prev) => ({ ...prev, logo: absoluteUrl || prev.logo }));
-      setFeedback("Logo uploaded");
+      setCompanyFeedback("Logo uploaded");
     } catch (_) {
-      setFeedback("Logo upload failed");
+      setCompanyFeedback("Logo upload failed");
     } finally {
-      setTimeout(() => setFeedback(""), 2000);
+      setTimeout(() => setCompanyFeedback(""), 2000);
     }
   };
 
@@ -230,11 +255,11 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ...prev,
         companySeal: absoluteUrl || prev.companySeal,
       }));
-      setFeedback("Stamp uploaded");
+      setCompanyFeedback("Stamp uploaded");
     } catch (_) {
-      setFeedback("Stamp upload failed");
+      setCompanyFeedback("Stamp upload failed");
     } finally {
-      setTimeout(() => setFeedback(""), 2000);
+      setTimeout(() => setCompanyFeedback(""), 2000);
     }
   };
 
@@ -258,11 +283,11 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         ...prev,
         authorizedSignature: absoluteUrl || prev.authorizedSignature,
       }));
-      setFeedback("Signature uploaded");
+      setCompanyFeedback("Signature uploaded");
     } catch (_) {
-      setFeedback("Signature upload failed");
+      setCompanyFeedback("Signature upload failed");
     } finally {
-      setTimeout(() => setFeedback(""), 2000);
+      setTimeout(() => setCompanyFeedback(""), 2000);
     }
   };
 
@@ -309,16 +334,23 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
       };
       await apiUpdateCompany(payload);
       updateProfile(formData);
-      setFeedback("Company details saved successfully!");
+      setCompanyFeedback("Company details saved successfully!");
     } catch (err: any) {
-      setFeedback(err?.message || "Failed to save company details");
+      setCompanyFeedback(err?.message || "Failed to save company details");
     } finally {
-      setTimeout(() => setFeedback(""), 3000);
+      setTimeout(() => setCompanyFeedback(""), 3000);
     }
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 max-w-4xl mx-auto">
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        duration={3000}
+      />
       <h2 className="text-2xl font-bold text-gray-800">Company Profile</h2>
       <p className="text-gray-500 mt-1 mb-6">
         Update your company information and branding.
@@ -498,7 +530,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="gstin"
               value={formData.gstin}
               onChange={handleInputChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -514,7 +546,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="pan"
               value={formData.pan}
               onChange={handleInputChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -530,7 +562,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyState"
               value={formData.companyState || ""}
               onChange={handleInputChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
           <div>
@@ -546,14 +578,16 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
               id="companyStateCode"
               value={formData.companyStateCode || ""}
               onChange={handleInputChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
+              className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
             />
           </div>
         </div>
 
         <div className="flex justify-end items-center pt-6 border-t">
-          {feedback && (
-            <span className="text-green-600 text-sm mr-4">{feedback}</span>
+          {companyFeedback && (
+            <span className="text-green-600 text-sm mr-4">
+              {companyFeedback}
+            </span>
           )}
           <button
             type="submit"
@@ -580,7 +614,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="accountName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Account Name
+                Account Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -588,6 +622,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountName"
                 value={formData.defaultBankDetails.accountName}
                 onChange={handleBankDetailsChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -596,7 +631,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="accountNumber"
                 className="block text-sm font-medium text-gray-700"
               >
-                Account Number
+                Account Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -604,6 +639,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="accountNumber"
                 value={formData.defaultBankDetails.accountNumber}
                 onChange={handleBankDetailsChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -612,7 +648,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="bankName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Bank Name
+                Bank Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -620,6 +656,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="bankName"
                 value={formData.defaultBankDetails.bankName}
                 onChange={handleBankDetailsChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -628,7 +665,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="branch"
                 className="block text-sm font-medium text-gray-700"
               >
-                Branch
+                Branch <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -636,6 +673,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="branch"
                 value={formData.defaultBankDetails.branch}
                 onChange={handleBankDetailsChange}
+                required
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -644,7 +682,7 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 htmlFor="ifsc"
                 className="block text-sm font-medium text-gray-700"
               >
-                IFSC Code
+                IFSC Code <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -652,6 +690,8 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
                 id="ifsc"
                 value={formData.defaultBankDetails.ifsc}
                 onChange={handleBankDetailsChange}
+                required
+                maxLength={11}
                 className="mt-1 block w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
               />
             </div>
@@ -659,26 +699,49 @@ export const Profile: React.FC<ProfileProps> = ({ profile, updateProfile }) => {
         </div>
 
         <div className="flex justify-end items-center pt-6 border-t">
-          {feedback && (
-            <span className="text-green-600 text-sm mr-4">{feedback}</span>
-          )}
-          <button
-            type="button"
-            onClick={handleSaveBankDetails}
-            disabled={
-              !(
-                formData.defaultBankDetails.bankName &&
-                formData.defaultBankDetails.accountName &&
-                formData.defaultBankDetails.accountNumber &&
-                formData.defaultBankDetails.ifsc
-              )
-            }
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            {selectedBankId != null
-              ? "Update Bank Details"
-              : "Add Bank Details"}
-          </button>
+          <div className="relative group">
+            {(() => {
+              const missingFields: string[] = [];
+              if (!formData.defaultBankDetails.bankName) missingFields.push("Bank Name");
+              if (!formData.defaultBankDetails.accountName) missingFields.push("Account Name");
+              if (!formData.defaultBankDetails.accountNumber) missingFields.push("Account Number");
+              if (!formData.defaultBankDetails.branch) missingFields.push("Branch");
+              if (!formData.defaultBankDetails.ifsc) missingFields.push("IFSC Code");
+              const isDisabled = missingFields.length > 0;
+
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveBankDetails}
+                    disabled={isDisabled}
+                    className={`px-6 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                      isDisabled
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {selectedBankId != null
+                      ? "Update Bank Details"
+                      : "Add Bank Details"}
+                  </button>
+                  {isDisabled && (
+                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
+                      <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
+                        <p className="font-semibold mb-1">Please fill required fields:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {missingFields.map((field, index) => (
+                            <li key={index}>{field}</li>
+                          ))}
+                        </ul>
+                        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Saved Bank Details List */}
