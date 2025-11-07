@@ -4,7 +4,11 @@ import { View } from "../App";
 import { PlusIcon, DownloadIcon, TrashIcon } from "./icons";
 import DummyPDF from "./DummyPDF";
 import { pdf } from "@react-pdf/renderer";
-import { apiListInvoices, apiGetInvoiceDetails } from "../utils/api";
+import {
+  apiListInvoices,
+  apiGetInvoiceDetails,
+  apiListBankDetails,
+} from "../utils/api";
 
 // html2canvas/jsPDF removed in favor of @react-pdf/renderer
 
@@ -115,6 +119,37 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       const body = await apiGetInvoiceDetails(row.id);
       const d: any = (body && (body as any).data) || body;
       if (!d) return;
+      // Fetch bank details to get the branch information
+      let bankBranch = "";
+      try {
+        const bankDetailsResponse = await apiListBankDetails();
+        const bankDetailsList = Array.isArray(bankDetailsResponse)
+          ? bankDetailsResponse
+          : Array.isArray((bankDetailsResponse as any)?.data)
+          ? (bankDetailsResponse as any).data
+          : [];
+
+        // Find matching bank detail by account number and bank name
+        const matchingBank = bankDetailsList.find(
+          (bd: any) =>
+            (bd.accountName === d.selectedAccountName ||
+              bd.account_name === d.selectedAccountName) &&
+            (bd.accountNumber === d.selectedAccountNumber ||
+              bd.account_number === d.selectedAccountNumber) &&
+            (bd.bankName === d.selectedBankName ||
+              bd.bank_name === d.selectedBankName)
+        );
+
+        if (matchingBank) {
+          bankBranch = matchingBank.bankBranch || matchingBank.branch || "";
+        }
+      } catch (error) {
+        console.warn(
+          "Failed to fetch bank details for branch information:",
+          error
+        );
+      }
+
       const mapped: Invoice = {
         id: String(d.id ?? row.id),
         invoiceNumber: String(d.invoiceNumber || row.invoiceNumber || ""),
@@ -162,7 +197,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           accountName: d.selectedAccountName || "",
           accountNumber: d.selectedAccountNumber || "",
           bankName: d.selectedBankName || "",
-          branch: undefined,
+          branch: bankBranch,
           ifsc: d.selectedIfscCode || "",
         },
         termsAndConditions: d.termsAndConditions || "",

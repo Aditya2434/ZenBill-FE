@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { apiGetInvoiceDetails } from "../utils/api";
+import { apiGetInvoiceDetails, apiListBankDetails } from "../utils/api";
 import { View } from "../App";
 import { CompanyProfile } from "../types";
 
@@ -35,6 +35,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [bankBranch, setBankBranch] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +45,41 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
       try {
         const body = await apiGetInvoiceDetails(invoiceId);
         const details = (body && (body as any).data) || body;
-        if (!cancelled) setData(details);
+        if (!cancelled) {
+          setData(details);
+
+          // Fetch bank details to get the branch information
+          try {
+            const bankDetailsResponse = await apiListBankDetails();
+            const bankDetailsList = Array.isArray(bankDetailsResponse)
+              ? bankDetailsResponse
+              : Array.isArray((bankDetailsResponse as any)?.data)
+              ? (bankDetailsResponse as any).data
+              : [];
+
+            // Find matching bank detail by account number and bank name
+            const matchingBank = bankDetailsList.find(
+              (bd: any) =>
+                (bd.accountName === details.selectedAccountName ||
+                  bd.account_name === details.selectedAccountName) &&
+                (bd.accountNumber === details.selectedAccountNumber ||
+                  bd.account_number === details.selectedAccountNumber) &&
+                (bd.bankName === details.selectedBankName ||
+                  bd.bank_name === details.selectedBankName)
+            );
+
+            if (matchingBank) {
+              setBankBranch(
+                matchingBank.bankBranch || matchingBank.branch || ""
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "Failed to fetch bank details for branch information:",
+              error
+            );
+          }
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load details");
       } finally {
@@ -59,7 +94,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
   return (
     <div
       className="bg-white p-4 rounded-lg shadow-sm"
-      style={{ border: "1px solid red" }}
+      style={{ border: "1px solid green" }}
     >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2>
@@ -329,7 +364,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
             <DisplayField label="BANK" value={data.selectedBankName} />
             <DisplayField label="A/C NAME" value={data.selectedAccountName} />
             <DisplayField label="A/C NO" value={data.selectedAccountNumber} />
-            <DisplayField label="BRANCH" value={data.selectedBankBranch} />
+            <DisplayField
+              label="BRANCH"
+              value={bankBranch || data.selectedBankBranch}
+            />
             <DisplayField label="IFSC" value={data.selectedIfscCode} />
             <div>
               <label className="font-semibold">

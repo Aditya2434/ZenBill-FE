@@ -1055,7 +1055,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm">
+    <div
+      className="bg-white p-4 rounded-lg shadow-sm"
+      style={{ border: "1px solid blue" }}
+    >
       <Toast
         message={toast.message}
         type={toast.type}
@@ -1092,9 +1095,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       {showDeleteConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-            <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              Confirm Delete
+            </h3>
             <p className="mt-2 text-sm text-gray-600">
-              Are you sure you want to delete this item? This action cannot be undone.
+              Are you sure you want to delete this item? This action cannot be
+              undone.
             </p>
             <div className="mt-4 flex justify-end space-x-3">
               <button
