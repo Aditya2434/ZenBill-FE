@@ -8,15 +8,12 @@ async function request(path: string, options: RequestOptions = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
-  try {
-    const token = localStorage.getItem("zenbill_auth_token");
-    if (token) {
-      (headers as any)["Authorization"] = `Bearer ${token}`;
-    }
-  } catch (_) {}
+
+  // Cookie-based authentication: include credentials to send cookies automatically
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: "include", // This sends cookies with every request
     body:
       options.json !== undefined ? JSON.stringify(options.json) : options.body,
   });
@@ -94,6 +91,10 @@ export function apiRegister(payload: {
 
 export function apiLogin(payload: { email: string; password: string }) {
   return request("/api/v1/auth/login", { method: "POST", json: payload });
+}
+
+export function apiLogout() {
+  return request("/api/v1/auth/logout", { method: "POST" });
 }
 
 // Invoices API
@@ -287,15 +288,12 @@ export async function apiStorageUpload(
   if (bucket) url.searchParams.set("bucket", bucket);
   const form = new FormData();
   form.append("file", file);
-  const headers: HeadersInit = {};
-  try {
-    const token = localStorage.getItem("zenbill_auth_token");
-    if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
-  } catch (_) {}
+
+  // Cookie-based authentication: credentials will be sent automatically
   const res = await fetch(url.toString(), {
     method: "POST",
     body: form,
-    headers,
+    credentials: "include", // Send cookies with the request
   });
   const dataText = await res.text();
   let data: any = undefined;
