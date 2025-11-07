@@ -236,6 +236,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [companySealBase64, setCompanySealBase64] = useState<string>("");
   const [signatureBase64, setSignatureBase64] = useState<string>("");
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   const showToast = (message: string, type: ToastType) => {
     setToast({ message, type, isVisible: true });
@@ -683,11 +685,25 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     });
   };
 
-  const removeItem = (index: number) => {
-    setInvoice({
-      ...invoice,
-      items: invoice.items.filter((_, i) => i !== index),
-    });
+  const handleDeleteItem = (index: number) => {
+    setItemToDelete(index);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteItem = () => {
+    if (itemToDelete !== null) {
+      setInvoice({
+        ...invoice,
+        items: invoice.items.filter((_, i) => i !== itemToDelete),
+      });
+    }
+    setShowDeleteConfirmModal(false);
+    setItemToDelete(null);
+  };
+
+  const cancelDeleteItem = () => {
+    setShowDeleteConfirmModal(false);
+    setItemToDelete(null);
   };
 
   const handleInputChange = (
@@ -1068,6 +1084,32 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
               >
                 Yes, save it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this item? This action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={cancelDeleteItem}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteItem}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -1612,7 +1654,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   </p>
                   <button
                     type="button"
-                    onClick={() => removeItem(index)}
+                    onClick={() => handleDeleteItem(index)}
                     className="text-red-500 hover:text-red-700 flex justify-center"
                   >
                     <TrashIcon />
