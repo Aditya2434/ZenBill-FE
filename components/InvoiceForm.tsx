@@ -21,6 +21,7 @@ import {
   apiUpdateInvoice,
   apiListBankDetails,
   apiListInvoices,
+  apiStorageUpload,
 } from "../utils/api";
 import DummyPDF from "./DummyPDF";
 import { Toast, ToastType } from "./Toast";
@@ -803,14 +804,61 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Invoice-${previewInvoiceData.invoiceNumber.replace(
-        /\//g,
-        "-"
-      )}.pdf`;
+      
+      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+      const invoiceNum = previewInvoiceData.invoiceNumber.replace(/\//g, "-");
+      const date = new Date(previewInvoiceData.issueDate || Date.now());
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+      const billedToName = (previewInvoiceData.client?.name || "")
+        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      
+      link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error generating PDF", err);
+    }
+  };
+
+  const generateAndUploadPdf = async (invoiceData: Invoice): Promise<string | null> => {
+    try {
+      // Create profile with base64 images for PDF
+      const profileForPdf = {
+        ...profile,
+        logo: logoBase64 || profile.logo || "",
+        companySeal: companySealBase64 || profile.companySeal || "",
+        authorizedSignature:
+          signatureBase64 || profile.authorizedSignature || "",
+      };
+      
+      // Generate PDF blob
+      const blob = await pdf(
+        <DummyPDF invoice={invoiceData} profile={profileForPdf} />
+      ).toBlob();
+      
+      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+      const invoiceNum = invoiceData.invoiceNumber.replace(/\//g, "-");
+      const date = new Date(invoiceData.issueDate || Date.now());
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+      const billedToName = (invoiceData.client?.name || "")
+        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
+      
+      // Convert blob to File for upload
+      const file = new File([blob], fileName, { type: "application/pdf" });
+      
+      // Upload to Supabase using existing storage endpoint
+      const uploadResult: any = await apiStorageUpload(file, "invoices", "document");
+      
+      // Return the URL from the upload result
+      return uploadResult?.url || null;
+    } catch (err) {
+      console.error("Error generating or uploading PDF:", err);
+      return null;
     }
   };
 
@@ -881,11 +929,21 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
+        // Generate and upload PDF before updating invoice
+        const pdfUrl = await generateAndUploadPdf(cleanedInvoiceData as Invoice);
+        if (pdfUrl) {
+          payload.pdfUrl = pdfUrl;
+        }
+
         await apiUpdateInvoice((existingInvoice as any).id, payload);
         updateInvoice(cleanedInvoiceData as Invoice);
         showToast("Invoice updated successfully!", "success");
         setInvoiceNumberError(null); // Clear any invoice number errors on success
-        setView("invoices");
+        
+        // Delay navigation to show toast message
+        setTimeout(() => {
+          setView("invoices");
+        }, 1500);
       } catch (e: any) {
         // Show detailed validation errors in toast
         const errorMessage = e?.message || "Failed to update invoice";
@@ -953,6 +1011,13 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         console.warn("Could not validate invoice number against backend:", e);
       }
 
+      // Create invoice data with full invoice number for PDF generation
+      const invoiceDataForPdf = {
+        ...cleanedInvoiceData,
+        invoiceNumber: fullInvoiceNumber,
+        id: "temp-id", // Temporary ID for PDF generation
+      } as Invoice;
+
       // Map to BE payload
       const payload: any = {
         invoiceDate: (cleanedInvoiceData as any).issueDate,
@@ -1010,10 +1075,20 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
+        // Generate and upload PDF before creating invoice
+        const pdfUrl = await generateAndUploadPdf(invoiceDataForPdf);
+        if (pdfUrl) {
+          payload.pdfUrl = pdfUrl;
+        }
+
         await apiCreateInvoice(payload);
         showToast("Invoice created successfully!", "success");
         setInvoiceNumberError(null); // Clear any invoice number errors on success
-        setView("invoices");
+        
+        // Delay navigation to show toast message
+        setTimeout(() => {
+          setView("invoices");
+        }, 1500);
       } catch (e: any) {
         // Show detailed validation errors in toast
         const errorMessage = e?.message || "Failed to save invoice";
