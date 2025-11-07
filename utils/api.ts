@@ -28,6 +28,51 @@ async function request(path: string, options: RequestOptions = {}) {
     data = text;
   }
   if (!res.ok) {
+    // Handle structured validation errors from backend
+    if (data && data.errors && typeof data.errors === "object") {
+      // Map backend field names to user-friendly labels
+      const fieldLabelMap: Record<string, string> = {
+        billedToName: "Detail of Receiver (Billed To)",
+        billedToCode: "State & Code",
+        billedToState: "State & Code of Receiver",
+        shippedToName: "Detail of Receiver (Shipped To)",
+        shippedToCode: "Shipped To State & Code",
+        shippedToState: "Shipped To State",
+        items: "Invoice Items",
+        invoiceNumber: "Tax Invoice No.",
+        invoiceDate: "Invoice Date",
+        billedToAddress: "Billed To Address",
+        shippedToAddress: "Shipped To Address",
+        billedToGstin: "Billed To GSTIN",
+        shippedToGstin: "Shipped To GSTIN",
+        transportMode: "Transport Mode",
+        vehicleNo: "Vehicle No.",
+        dateOfSupply: "Date of Supply",
+        placeOfSupply: "Place of Supply",
+        orderNo: "Order No.",
+        cgstRate: "CGST Rate",
+        sgstRate: "SGST Rate",
+        igstRate: "IGST Rate",
+        selectedBankName: "Bank Name",
+        selectedAccountName: "Account Name",
+        selectedAccountNumber: "Account Number",
+        selectedIfscCode: "IFSC Code",
+        termsAndConditions: "Terms and Conditions",
+        ewayBillNo: "E-Way Bill No.",
+      };
+
+      const errorMessages = Object.entries(data.errors)
+        .map(([field, message]) => {
+          const friendlyLabel = fieldLabelMap[field] || field;
+          return `${friendlyLabel} ${message}`;
+        })
+        .join(", ");
+      const error = new Error(errorMessages);
+      (error as any).validationErrors = data.errors;
+      (error as any).originalMessage = data.message;
+      throw error;
+    }
+
     const message =
       (data && (data.message || data.error)) ||
       res.statusText ||
