@@ -18,7 +18,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { RequireAuth } from "./hooks/useAuth";
 import DummyPDF from "./components/DummyPDF";
 import { PDFViewer } from "@react-pdf/renderer";
-import InvoiceDetails from "./components/InvoiceDetails";
+import InvoiceView from "./components/InvoiceView";
 
 export type View =
   | "dashboard"
@@ -37,11 +37,21 @@ export type View =
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
-  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<string | number | null>(null);
+  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<
+    string | number | null
+  >(null);
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
   const { clients, addClient, updateClient, deleteClient } = useClients();
-  const { products, addProduct, updateProduct, deleteProduct, isLoadingProducts, loadError, refreshProducts } = useProducts();
+  const {
+    products,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    isLoadingProducts,
+    loadError,
+    refreshProducts,
+  } = useProducts();
 
   const handleSetView = useCallback((view: View) => {
     setCurrentView(view);
@@ -71,7 +81,10 @@ const App: React.FC = () => {
             onDelete={deleteInvoice}
             setView={handleSetView}
             profile={profile}
-            onViewDetails={(id) => { setInvoiceIdForDetails(id); setCurrentView('invoice-details'); }}
+            onViewDetails={(id) => {
+              setInvoiceIdForDetails(id);
+              setCurrentView("invoice-details");
+            }}
           />
         );
       case "create-invoice":
@@ -107,7 +120,11 @@ const App: React.FC = () => {
         );
       case "invoice-details":
         return invoiceIdForDetails != null ? (
-          <InvoiceDetails invoiceId={invoiceIdForDetails} setView={handleSetView} profile={profile} />
+          <InvoiceView
+            invoiceId={invoiceIdForDetails}
+            setView={handleSetView}
+            profile={profile}
+          />
         ) : (
           <InvoiceList
             invoices={invoices}
@@ -115,7 +132,10 @@ const App: React.FC = () => {
             onDelete={deleteInvoice}
             setView={handleSetView}
             profile={profile}
-            onViewDetails={(id) => { setInvoiceIdForDetails(id); setCurrentView('invoice-details'); }}
+            onViewDetails={(id) => {
+              setInvoiceIdForDetails(id);
+              setCurrentView("invoice-details");
+            }}
           />
         );
       case "create-quotation":

@@ -3,7 +3,7 @@ import { apiGetInvoiceDetails } from "../utils/api";
 import { View } from "../App";
 import { CompanyProfile } from "../types";
 
-interface InvoiceDetailsProps {
+interface InvoiceViewProps {
   invoiceId: string | number;
   setView: (view: View) => void;
   profile: CompanyProfile;
@@ -27,7 +27,7 @@ const DisplayField = ({
   </div>
 );
 
-export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({
+export const InvoiceView: React.FC<InvoiceViewProps> = ({
   invoiceId,
   setView,
   profile,
@@ -57,7 +57,10 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({
   }, [invoiceId]);
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm">
+    <div
+      className="bg-white p-4 rounded-lg shadow-sm"
+      style={{ border: "1px solid red" }}
+    >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2>
         <button
@@ -326,6 +329,7 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({
             <DisplayField label="BANK" value={data.selectedBankName} />
             <DisplayField label="A/C NAME" value={data.selectedAccountName} />
             <DisplayField label="A/C NO" value={data.selectedAccountNumber} />
+            <DisplayField label="BRANCH" value={data.selectedBankBranch} />
             <DisplayField label="IFSC" value={data.selectedIfscCode} />
             <div>
               <label className="font-semibold">
@@ -342,4 +346,4 @@ export const InvoiceDetails: React.FC<InvoiceDetailsProps> = ({
   );
 };
 
-export default InvoiceDetails;
+export default InvoiceView;
