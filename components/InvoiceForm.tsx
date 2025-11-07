@@ -804,16 +804,18 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      
+
       // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
       const invoiceNum = previewInvoiceData.invoiceNumber.replace(/\//g, "-");
       const date = new Date(previewInvoiceData.issueDate || Date.now());
-      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${date.getFullYear()}`;
       const billedToName = (previewInvoiceData.client?.name || "")
         .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
         .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
         .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
-      
+
       link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
@@ -822,7 +824,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const generateAndUploadPdf = async (invoiceData: Invoice): Promise<string | null> => {
+  const generateAndUploadPdf = async (
+    invoiceData: Invoice
+  ): Promise<string | null> => {
     try {
       // Create profile with base64 images for PDF
       const profileForPdf = {
@@ -832,28 +836,34 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         authorizedSignature:
           signatureBase64 || profile.authorizedSignature || "",
       };
-      
+
       // Generate PDF blob
       const blob = await pdf(
         <DummyPDF invoice={invoiceData} profile={profileForPdf} />
       ).toBlob();
-      
+
       // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
       const invoiceNum = invoiceData.invoiceNumber.replace(/\//g, "-");
       const date = new Date(invoiceData.issueDate || Date.now());
-      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${date.getFullYear()}`;
       const billedToName = (invoiceData.client?.name || "")
         .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
         .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
         .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
       const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
-      
+
       // Convert blob to File for upload
       const file = new File([blob], fileName, { type: "application/pdf" });
-      
+
       // Upload to Supabase using existing storage endpoint
-      const uploadResult: any = await apiStorageUpload(file, "invoices", "document");
-      
+      const uploadResult: any = await apiStorageUpload(
+        file,
+        "invoices",
+        "document"
+      );
+
       // Return the URL from the upload result
       return uploadResult?.url || null;
     } catch (err) {
@@ -930,7 +940,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
       try {
         // Generate and upload PDF before updating invoice
-        const pdfUrl = await generateAndUploadPdf(cleanedInvoiceData as Invoice);
+        const pdfUrl = await generateAndUploadPdf(
+          cleanedInvoiceData as Invoice
+        );
         if (pdfUrl) {
           payload.pdfUrl = pdfUrl;
         }
@@ -939,7 +951,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         updateInvoice(cleanedInvoiceData as Invoice);
         showToast("Invoice updated successfully!", "success");
         setInvoiceNumberError(null); // Clear any invoice number errors on success
-        
+
         // Delay navigation to show toast message
         setTimeout(() => {
           setView("invoices");
@@ -1084,7 +1096,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         await apiCreateInvoice(payload);
         showToast("Invoice created successfully!", "success");
         setInvoiceNumberError(null); // Clear any invoice number errors on success
-        
+
         // Delay navigation to show toast message
         setTimeout(() => {
           setView("invoices");
