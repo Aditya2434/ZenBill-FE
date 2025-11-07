@@ -1592,7 +1592,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     onChange={(e) =>
                       handleItemChange(index, "quantity", e.target.value)
                     }
-                    className="w-full p-1 border border-gray-300 bg-white text-gray-900"
+                    className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <input
                     type="number"
@@ -1601,7 +1601,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     onChange={(e) =>
                       handleItemChange(index, "unitPrice", e.target.value)
                     }
-                    className="w-full p-1 border border-gray-300 bg-white text-gray-900"
+                    className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <p className="text-right p-1">
                     ₹
