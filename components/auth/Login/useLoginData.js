@@ -30,9 +30,15 @@ export default function useLoginData() {
     if (!isValid) return;
     setIsLoading(true);
     try {
-      const res = await loginMutation.mutateAsync({ email, password });
-      const token = res?.token || res?.accessToken || res?.data?.token;
-      auth.login(token);
+      // Login API call - cookie is set automatically by backend
+      const response = await loginMutation.mutateAsync({ email, password });
+      
+      // Extract email from response
+      const userEmail = response?.data?.email || response?.email || email;
+      
+      // Update auth context (cookie already set by backend)
+      auth.login(userEmail);
+      
       return true;
     } catch (e) {
       setError(e?.message || "Unable to sign in. Please try again.");

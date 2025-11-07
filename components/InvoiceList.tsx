@@ -4,7 +4,11 @@ import { View } from "../App";
 import { PlusIcon, DownloadIcon, TrashIcon } from "./icons";
 import DummyPDF from "./DummyPDF";
 import { pdf } from "@react-pdf/renderer";
-import { apiListInvoices, apiGetInvoiceDetails } from "../utils/api";
+import {
+  apiListInvoices,
+  apiGetInvoiceDetails,
+  apiListBankDetails,
+} from "../utils/api";
 
 // html2canvas/jsPDF removed in favor of @react-pdf/renderer
 
@@ -115,6 +119,37 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       const body = await apiGetInvoiceDetails(row.id);
       const d: any = (body && (body as any).data) || body;
       if (!d) return;
+      // Fetch bank details to get the branch information
+      let bankBranch = "";
+      try {
+        const bankDetailsResponse = await apiListBankDetails();
+        const bankDetailsList = Array.isArray(bankDetailsResponse)
+          ? bankDetailsResponse
+          : Array.isArray((bankDetailsResponse as any)?.data)
+          ? (bankDetailsResponse as any).data
+          : [];
+
+        // Find matching bank detail by account number and bank name
+        const matchingBank = bankDetailsList.find(
+          (bd: any) =>
+            (bd.accountName === d.selectedAccountName ||
+              bd.account_name === d.selectedAccountName) &&
+            (bd.accountNumber === d.selectedAccountNumber ||
+              bd.account_number === d.selectedAccountNumber) &&
+            (bd.bankName === d.selectedBankName ||
+              bd.bank_name === d.selectedBankName)
+        );
+
+        if (matchingBank) {
+          bankBranch = matchingBank.bankBranch || matchingBank.branch || "";
+        }
+      } catch (error) {
+        console.warn(
+          "Failed to fetch bank details for branch information:",
+          error
+        );
+      }
+
       const mapped: Invoice = {
         id: String(d.id ?? row.id),
         invoiceNumber: String(d.invoiceNumber || row.invoiceNumber || ""),
@@ -162,7 +197,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           accountName: d.selectedAccountName || "",
           accountNumber: d.selectedAccountNumber || "",
           bankName: d.selectedBankName || "",
-          branch: undefined,
+          branch: bankBranch,
           ifsc: d.selectedIfscCode || "",
         },
         termsAndConditions: d.termsAndConditions || "",
@@ -174,15 +209,59 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     }
   };
 
-  const handleDownloadRow = (row: {
+  const handleDownloadRow = async (row: {
     id: number | string;
     invoiceNumber: string;
+    invoiceDate: string;
+    billedToName: string;
     pdfUrl?: string;
   }) => {
+    // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+    const invoiceNum = row.invoiceNumber.replace(/\//g, "-");
+    const date = new Date(row.invoiceDate || Date.now());
+    const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+    const billedToName = (row.billedToName || "")
+      .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+      .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+    const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
+
+    // If PDF URL exists in Supabase, download it directly
     if (row.pdfUrl) {
-      window.open(row.pdfUrl, "_blank");
+      try {
+        // Ensure URL is absolute
+        const BASE_URL = "http://localhost:8080";
+        let absoluteUrl = row.pdfUrl;
+        if (row.pdfUrl.startsWith("/api/")) {
+          absoluteUrl = BASE_URL + row.pdfUrl;
+        }
+
+        const response = await fetch(absoluteUrl, {
+          credentials: "include", // Include cookies for authentication
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch PDF");
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error downloading PDF from Supabase:", error);
+        // Fallback to generating PDF if download fails
+        const match = invoices.find(
+          (inv) => inv.invoiceNumber === row.invoiceNumber
+        );
+        if (match) {
+          handleDownload(match);
+        }
+      }
       return;
     }
+    // Fallback: generate PDF if no stored URL
     const match = invoices.find(
       (inv) => inv.invoiceNumber === row.invoiceNumber
     );
@@ -200,7 +279,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+      
+      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+      const invoiceNum = invoice.invoiceNumber.replace(/\//g, "-");
+      const date = new Date(invoice.issueDate || Date.now());
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+      const billedToName = (invoice.client?.name || "")
+        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      
+      link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {

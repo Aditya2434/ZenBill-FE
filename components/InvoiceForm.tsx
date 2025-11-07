@@ -10,6 +10,7 @@ import {
 import { View } from "../App";
 import { PlusIcon, TrashIcon, DownloadIcon } from "./icons";
 import { Dropdown } from "./Dropdown";
+import { Combobox } from "./Combobox";
 import {
   generateNextInvoiceNumber,
   getHighestInvoiceNumber,
@@ -19,8 +20,11 @@ import {
   apiCreateInvoice,
   apiUpdateInvoice,
   apiListBankDetails,
+  apiListInvoices,
+  apiStorageUpload,
 } from "../utils/api";
 import DummyPDF from "./DummyPDF";
+import { Toast, ToastType } from "./Toast";
 
 interface InvoiceFormProps {
   existingInvoice?: Invoice | null;
@@ -217,15 +221,91 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [invoiceNumberPrefix, setInvoiceNumberPrefix] = useState("");
   const [invoiceNumberSequential, setInvoiceNumberSequential] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [invoiceNumberError, setInvoiceNumberError] = useState<string | null>(
+    null
+  );
   const [showEmptyInvoiceModal, setShowEmptyInvoiceModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showInvoiceNumberTip, setShowInvoiceNumberTip] = useState(false);
   const [hasSeenInvoiceNumberTip, setHasSeenInvoiceNumberTip] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+    isVisible: boolean;
+  }>({ message: "", type: "success", isVisible: false });
   const [bankDetailsList, setBankDetailsList] = useState<any[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [companySealBase64, setCompanySealBase64] = useState<string>("");
   const [signatureBase64, setSignatureBase64] = useState<string>("");
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  };
+
+  // Generate next invoice number based on backend data
+  const generateNextInvoiceNumberFromBackend = async (
+    companyProfile: CompanyProfile
+  ): Promise<string> => {
+    try {
+      const backendInvoices = await apiListInvoices();
+      const invoiceList = Array.isArray(backendInvoices)
+        ? backendInvoices
+        : Array.isArray(backendInvoices?.data)
+        ? backendInvoices.data
+        : [];
+
+      const acronym =
+        companyProfile.companyAcronym ||
+        companyProfile.companyName
+          .split(" ")
+          .map((word) => word[0])
+          .join("")
+          .toUpperCase();
+
+      const financialYearString = getFinancialYearString(new Date());
+      const prefix = `${acronym}/${financialYearString}/`;
+
+      const backendInvoicesForPrefix = invoiceList.filter((inv: any) =>
+        String(inv.invoiceNumber || "").startsWith(prefix)
+      );
+
+      const highestNumber = backendInvoicesForPrefix
+        .map((inv: any) => {
+          const parts = String(inv.invoiceNumber || "").split("/");
+          return parseInt(parts[2] || "0", 10);
+        })
+        .filter((num) => !isNaN(num))
+        .reduce((max, num) => Math.max(max, num), 0);
+
+      const nextNumber = (highestNumber + 1).toString().padStart(3, "0");
+      return `${prefix}${nextNumber}`;
+    } catch (error) {
+      console.warn(
+        "Failed to generate invoice number from backend, falling back to local data:",
+        error
+      );
+      // Fallback to local generation
+      return generateNextInvoiceNumber(invoices, companyProfile);
+    }
+  };
+
+  // Helper function to get financial year string (same as in useInvoices)
+  const getFinancialYearString = (date: Date): string => {
+    const month = date.getMonth() + 1; // getMonth() returns 0-11
+    const year = date.getFullYear();
+    const financialYearStart = month >= 4 ? year : year - 1;
+    const financialYearEnd = financialYearStart + 1;
+    return `${String(financialYearStart).slice(-2)}-${String(
+      financialYearEnd
+    ).slice(-2)}`;
+  };
 
   // Fetch bank details and set active bank detail
   useEffect(() => {
@@ -438,12 +518,31 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     } else {
       setInvoice(emptyInvoice);
       setSameAsBilling(true);
-      const nextInvoiceNumber = generateNextInvoiceNumber(invoices, profile);
-      const parts = nextInvoiceNumber.split("/");
-      if (parts.length === 3) {
-        setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
-        setInvoiceNumberSequential(parts[2]);
-      }
+      // Generate invoice number from backend data
+      (async () => {
+        try {
+          const nextInvoiceNumber = await generateNextInvoiceNumberFromBackend(
+            profile
+          );
+          const parts = nextInvoiceNumber.split("/");
+          if (parts.length === 3) {
+            setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
+            setInvoiceNumberSequential(parts[2]);
+          }
+        } catch (error) {
+          console.error("Failed to generate invoice number:", error);
+          // Fallback to local generation
+          const nextInvoiceNumber = generateNextInvoiceNumber(
+            invoices,
+            profile
+          );
+          const parts = nextInvoiceNumber.split("/");
+          if (parts.length === 3) {
+            setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
+            setInvoiceNumberSequential(parts[2]);
+          }
+        }
+      })();
     }
   }, [existingInvoice, emptyInvoice, invoices, profile]);
 
@@ -511,6 +610,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormError(null);
+    setInvoiceNumberError(null); // Clear invoice number specific error
     const { value } = e.target;
     const numericValue = value.replace(/[^0-9]/g, ""); // Only allow numbers
     if (numericValue.length <= 3) {
@@ -559,7 +659,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         }
 
         if (field === "quantity" || field === "unitPrice") {
-          updatedItem[field] = Number(value) || 0;
+          // Convert to number and ensure no leading zeros
+          const numericValue = value === "" ? 0 : Number(value);
+          updatedItem[field] = isNaN(numericValue) ? 0 : numericValue;
         }
         return updatedItem;
       }
@@ -585,11 +687,25 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     });
   };
 
-  const removeItem = (index: number) => {
-    setInvoice({
-      ...invoice,
-      items: invoice.items.filter((_, i) => i !== index),
-    });
+  const handleDeleteItem = (index: number) => {
+    setItemToDelete(index);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteItem = () => {
+    if (itemToDelete !== null) {
+      setInvoice({
+        ...invoice,
+        items: invoice.items.filter((_, i) => i !== itemToDelete),
+      });
+    }
+    setShowDeleteConfirmModal(false);
+    setItemToDelete(null);
+  };
+
+  const cancelDeleteItem = () => {
+    setShowDeleteConfirmModal(false);
+    setItemToDelete(null);
   };
 
   const handleInputChange = (
@@ -688,10 +804,19 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Invoice-${previewInvoiceData.invoiceNumber.replace(
-        /\//g,
-        "-"
-      )}.pdf`;
+
+      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+      const invoiceNum = previewInvoiceData.invoiceNumber.replace(/\//g, "-");
+      const date = new Date(previewInvoiceData.issueDate || Date.now());
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${date.getFullYear()}`;
+      const billedToName = (previewInvoiceData.client?.name || "")
+        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+
+      link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -699,8 +824,57 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
+  const generateAndUploadPdf = async (
+    invoiceData: Invoice
+  ): Promise<string | null> => {
+    try {
+      // Create profile with base64 images for PDF
+      const profileForPdf = {
+        ...profile,
+        logo: logoBase64 || profile.logo || "",
+        companySeal: companySealBase64 || profile.companySeal || "",
+        authorizedSignature:
+          signatureBase64 || profile.authorizedSignature || "",
+      };
+
+      // Generate PDF blob
+      const blob = await pdf(
+        <DummyPDF invoice={invoiceData} profile={profileForPdf} />
+      ).toBlob();
+
+      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
+      const invoiceNum = invoiceData.invoiceNumber.replace(/\//g, "-");
+      const date = new Date(invoiceData.issueDate || Date.now());
+      const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${date.getFullYear()}`;
+      const billedToName = (invoiceData.client?.name || "")
+        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
+
+      // Convert blob to File for upload
+      const file = new File([blob], fileName, { type: "application/pdf" });
+
+      // Upload to Supabase using existing storage endpoint
+      const uploadResult: any = await apiStorageUpload(
+        file,
+        "invoices",
+        "document"
+      );
+
+      // Return the URL from the upload result
+      return uploadResult?.url || null;
+    } catch (err) {
+      console.error("Error generating or uploading PDF:", err);
+      return null;
+    }
+  };
+
   const proceedWithSubmit = async () => {
     setFormError(null);
+    setInvoiceNumberError(null);
 
     const cleanedInvoiceData = {
       ...invoice,
@@ -765,36 +939,96 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
+        // Generate and upload PDF before updating invoice
+        const pdfUrl = await generateAndUploadPdf(
+          cleanedInvoiceData as Invoice
+        );
+        if (pdfUrl) {
+          payload.pdfUrl = pdfUrl;
+        }
+
         await apiUpdateInvoice((existingInvoice as any).id, payload);
         updateInvoice(cleanedInvoiceData as Invoice);
-        setView("invoices");
+        showToast("Invoice updated successfully!", "success");
+        setInvoiceNumberError(null); // Clear any invoice number errors on success
+
+        // Delay navigation to show toast message
+        setTimeout(() => {
+          setView("invoices");
+        }, 1500);
       } catch (e: any) {
-        setFormError(e?.message || "Failed to update invoice");
+        // Show detailed validation errors in toast
+        const errorMessage = e?.message || "Failed to update invoice";
+        showToast(errorMessage, "error");
+
+        // Check if this is an invoice number specific error
+        if (e?.validationErrors && e.validationErrors.invoiceNumber) {
+          setInvoiceNumberError(e.validationErrors.invoiceNumber);
+        } else if (errorMessage.toLowerCase().includes("invoice number")) {
+          setInvoiceNumberError(errorMessage);
+        } else {
+          // Set general form error for other validation issues
+          setFormError(errorMessage);
+        }
       }
     } else {
       const finalSequential = invoiceNumberSequential.padStart(3, "0");
       const fullInvoiceNumber = `${invoiceNumberPrefix}${finalSequential}`;
 
-      const isDuplicate = invoices.some(
-        (inv) =>
-          inv.invoiceNumber.toLowerCase() === fullInvoiceNumber.toLowerCase()
-      );
-      if (isDuplicate) {
-        setFormError("Invoice number already exists.");
-        return;
+      // Check for duplicates against backend data instead of local state
+      // The backend will also validate this, but we can provide immediate feedback
+      try {
+        const backendInvoices = await apiListInvoices();
+        const invoiceList = Array.isArray(backendInvoices)
+          ? backendInvoices
+          : Array.isArray(backendInvoices?.data)
+          ? backendInvoices.data
+          : [];
+
+        const isDuplicate = invoiceList.some(
+          (inv: any) =>
+            String(inv.invoiceNumber || "").toLowerCase() ===
+            fullInvoiceNumber.toLowerCase()
+        );
+        if (isDuplicate) {
+          setInvoiceNumberError("Invoice number already exists.");
+          showToast("Invoice number already exists.", "error");
+          return;
+        }
+
+        // Check if the number is sequential based on backend data
+        const backendInvoicesForPrefix = invoiceList.filter((inv: any) =>
+          String(inv.invoiceNumber || "").startsWith(invoiceNumberPrefix)
+        );
+
+        const highestNumber = backendInvoicesForPrefix
+          .map((inv: any) => {
+            const parts = String(inv.invoiceNumber || "").split("/");
+            return parseInt(parts[2] || "0", 10);
+          })
+          .filter((num) => !isNaN(num))
+          .reduce((max, num) => Math.max(max, num), 0);
+
+        const currentNumber = parseInt(finalSequential, 10);
+        if (!isNaN(currentNumber) && currentNumber <= highestNumber) {
+          const errorMsg = `Invoice no. must be > ${String(
+            highestNumber
+          ).padStart(3, "0")}.`;
+          setInvoiceNumberError(errorMsg);
+          showToast(errorMsg, "error");
+          return;
+        }
+      } catch (e: any) {
+        // If we can't check backend, show warning but allow to proceed
+        console.warn("Could not validate invoice number against backend:", e);
       }
 
-      const highestNumber = getHighestInvoiceNumber(
-        invoices,
-        invoiceNumberPrefix
-      );
-      const currentNumber = parseInt(finalSequential, 10);
-      if (!isNaN(currentNumber) && currentNumber <= highestNumber) {
-        setFormError(
-          `Invoice no. must be > ${String(highestNumber).padStart(3, "0")}.`
-        );
-        return;
-      }
+      // Create invoice data with full invoice number for PDF generation
+      const invoiceDataForPdf = {
+        ...cleanedInvoiceData,
+        invoiceNumber: fullInvoiceNumber,
+        id: "temp-id", // Temporary ID for PDF generation
+      } as Invoice;
 
       // Map to BE payload
       const payload: any = {
@@ -853,10 +1087,34 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
+        // Generate and upload PDF before creating invoice
+        const pdfUrl = await generateAndUploadPdf(invoiceDataForPdf);
+        if (pdfUrl) {
+          payload.pdfUrl = pdfUrl;
+        }
+
         await apiCreateInvoice(payload);
-        setView("invoices");
+        showToast("Invoice created successfully!", "success");
+        setInvoiceNumberError(null); // Clear any invoice number errors on success
+
+        // Delay navigation to show toast message
+        setTimeout(() => {
+          setView("invoices");
+        }, 1500);
       } catch (e: any) {
-        setFormError(e?.message || "Failed to save invoice");
+        // Show detailed validation errors in toast
+        const errorMessage = e?.message || "Failed to save invoice";
+        showToast(errorMessage, "error");
+
+        // Check if this is an invoice number specific error
+        if (e?.validationErrors && e.validationErrors.invoiceNumber) {
+          setInvoiceNumberError(e.validationErrors.invoiceNumber);
+        } else if (errorMessage.toLowerCase().includes("invoice number")) {
+          setInvoiceNumberError(errorMessage);
+        } else {
+          // Set general form error for other validation issues
+          setFormError(errorMessage);
+        }
       }
     }
   };
@@ -885,7 +1143,17 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm">
+    <div
+      className="bg-white p-4 rounded-lg shadow-sm"
+      style={{ border: "1px solid blue" }}
+    >
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        duration={5000}
+      />
       {showEmptyInvoiceModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
@@ -907,6 +1175,35 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
               >
                 Yes, save it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-medium text-gray-900">
+              Confirm Delete
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this item? This action cannot be
+              undone.
+            </p>
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={cancelDeleteItem}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteItem}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -1126,7 +1423,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div>
                     <div
                       className={`flex items-center border rounded-md overflow-hidden bg-white ${
-                        formError ? "border-red-500" : "border-gray-300"
+                        invoiceNumberError
+                          ? "border-red-500"
+                          : "border-gray-300"
                       }`}
                     >
                       <span className="px-2 py-1 text-gray-600 bg-gray-100">
@@ -1145,8 +1444,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         maxLength={3}
                       />
                     </div>
-                    {formError && (
-                      <p className="text-red-500 text-xs mt-1">{formError}</p>
+                    {invoiceNumberError && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {invoiceNumberError}
+                      </p>
                     )}
                   </div>
                 )}
@@ -1387,17 +1688,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div className="text-center p-1">{index + 1}</div>
 
                   <div className="relative">
-                    <Dropdown
+                    <Combobox
                       value={item.description}
                       onChange={(value) =>
                         handleItemChange(index, "description", value)
                       }
-                      placeholder="Item description"
+                      placeholder="Type item description or select from list"
                       options={products.map((p) => ({
                         value: p.name,
                         label: p.name,
                       }))}
-                      searchable={true}
                       className="w-full"
                     />
                   </div>
@@ -1423,20 +1723,20 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <input
                     type="number"
                     placeholder="Qty"
-                    value={item.quantity}
+                    value={item.quantity === 0 ? "" : item.quantity}
                     onChange={(e) =>
                       handleItemChange(index, "quantity", e.target.value)
                     }
-                    className="w-full p-1 border border-gray-300 bg-white text-gray-900"
+                    className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <input
                     type="number"
                     placeholder="Price"
-                    value={item.unitPrice}
+                    value={item.unitPrice === 0 ? "" : item.unitPrice}
                     onChange={(e) =>
                       handleItemChange(index, "unitPrice", e.target.value)
                     }
-                    className="w-full p-1 border border-gray-300 bg-white text-gray-900"
+                    className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <p className="text-right p-1">
                     ₹
@@ -1447,7 +1747,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   </p>
                   <button
                     type="button"
-                    onClick={() => removeItem(index)}
+                    onClick={() => handleDeleteItem(index)}
                     className="text-red-500 hover:text-red-700 flex justify-center"
                   >
                     <TrashIcon />

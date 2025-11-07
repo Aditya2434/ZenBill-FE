@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:8080";
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 type RequestOptions = RequestInit & { json?: any };
 
@@ -8,15 +8,12 @@ async function request(path: string, options: RequestOptions = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
-  try {
-    const token = localStorage.getItem("zenbill_auth_token");
-    if (token) {
-      (headers as any)["Authorization"] = `Bearer ${token}`;
-    }
-  } catch (_) {}
+
+  // Cookie-based authentication: include credentials to send cookies automatically
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: "include", // This sends cookies with every request
     body:
       options.json !== undefined ? JSON.stringify(options.json) : options.body,
   });
@@ -28,6 +25,51 @@ async function request(path: string, options: RequestOptions = {}) {
     data = text;
   }
   if (!res.ok) {
+    // Handle structured validation errors from backend
+    if (data && data.errors && typeof data.errors === "object") {
+      // Map backend field names to user-friendly labels
+      const fieldLabelMap: Record<string, string> = {
+        billedToName: "Detail of Receiver (Billed To)",
+        billedToCode: "State & Code",
+        billedToState: "State & Code of Receiver",
+        shippedToName: "Detail of Receiver (Shipped To)",
+        shippedToCode: "Shipped To State & Code",
+        shippedToState: "Shipped To State",
+        items: "Invoice Items",
+        invoiceNumber: "Tax Invoice No.",
+        invoiceDate: "Invoice Date",
+        billedToAddress: "Billed To Address",
+        shippedToAddress: "Shipped To Address",
+        billedToGstin: "Billed To GSTIN",
+        shippedToGstin: "Shipped To GSTIN",
+        transportMode: "Transport Mode",
+        vehicleNo: "Vehicle No.",
+        dateOfSupply: "Date of Supply",
+        placeOfSupply: "Place of Supply",
+        orderNo: "Order No.",
+        cgstRate: "CGST Rate",
+        sgstRate: "SGST Rate",
+        igstRate: "IGST Rate",
+        selectedBankName: "Bank Name",
+        selectedAccountName: "Account Name",
+        selectedAccountNumber: "Account Number",
+        selectedIfscCode: "IFSC Code",
+        termsAndConditions: "Terms and Conditions",
+        ewayBillNo: "E-Way Bill No.",
+      };
+
+      const errorMessages = Object.entries(data.errors)
+        .map(([field, message]) => {
+          const friendlyLabel = fieldLabelMap[field] || field;
+          return `${friendlyLabel} ${message}`;
+        })
+        .join(", ");
+      const error = new Error(errorMessages);
+      (error as any).validationErrors = data.errors;
+      (error as any).originalMessage = data.message;
+      throw error;
+    }
+
     const message =
       (data && (data.message || data.error)) ||
       res.statusText ||
@@ -49,6 +91,10 @@ export function apiRegister(payload: {
 
 export function apiLogin(payload: { email: string; password: string }) {
   return request("/api/v1/auth/login", { method: "POST", json: payload });
+}
+
+export function apiLogout() {
+  return request("/api/v1/auth/logout", { method: "POST" });
 }
 
 // Invoices API
@@ -242,15 +288,12 @@ export async function apiStorageUpload(
   if (bucket) url.searchParams.set("bucket", bucket);
   const form = new FormData();
   form.append("file", file);
-  const headers: HeadersInit = {};
-  try {
-    const token = localStorage.getItem("zenbill_auth_token");
-    if (token) (headers as any)["Authorization"] = `Bearer ${token}`;
-  } catch (_) {}
+
+  // Cookie-based authentication: credentials will be sent automatically
   const res = await fetch(url.toString(), {
     method: "POST",
     body: form,
-    headers,
+    credentials: "include", // Send cookies with the request
   });
   const dataText = await res.text();
   let data: any = undefined;
