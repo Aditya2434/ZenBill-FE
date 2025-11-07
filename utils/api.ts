@@ -1,4 +1,6 @@
-export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// Use empty string for production (same server) or localhost for development
+export const BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.DEV ? "http://localhost:8080" : "");
 
 type RequestOptions = RequestInit & { json?: any };
 
