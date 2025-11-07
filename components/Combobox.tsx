@@ -86,8 +86,15 @@ export const Combobox: React.FC<ComboboxProps> = ({
     if (e.key === "Escape") {
       setIsOpen(false);
       inputRef.current?.blur();
-    } else if (e.key === "Enter" && filteredOptions.length > 0 && isOpen) {
-      handleSelect(filteredOptions[0].value);
+    } else if (e.key === "Enter") {
+      e.preventDefault(); // Always prevent form submission on Enter
+      if (filteredOptions.length > 0 && isOpen) {
+        handleSelect(filteredOptions[0].value);
+      } else {
+        // If no options or dropdown closed, just close dropdown and blur
+        setIsOpen(false);
+        inputRef.current?.blur();
+      }
     }
   };
 

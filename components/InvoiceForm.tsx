@@ -10,6 +10,7 @@ import {
 import { View } from "../App";
 import { PlusIcon, TrashIcon, DownloadIcon } from "./icons";
 import { Dropdown } from "./Dropdown";
+import { Combobox } from "./Combobox";
 import {
   generateNextInvoiceNumber,
   getHighestInvoiceNumber,
@@ -1600,17 +1601,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div className="text-center p-1">{index + 1}</div>
 
                   <div className="relative">
-                    <Dropdown
+                    <Combobox
                       value={item.description}
                       onChange={(value) =>
                         handleItemChange(index, "description", value)
                       }
-                      placeholder="Item description"
+                      placeholder="Type item description or select from list"
                       options={products.map((p) => ({
                         value: p.name,
                         label: p.name,
                       }))}
-                      searchable={true}
                       className="w-full"
                     />
                   </div>
