@@ -315,6 +315,29 @@ export async function apiStorageUpload(
   return data && data.data ? data.data : data;
 }
 
+// ─── Quotations API ────────────────────────────────────────────────────────────
+
+export function apiListQuotations() {
+  return request("/api/v1/quotations");
+}
+
+export function apiCreateQuotation(payload: { title: string; content: string }) {
+  return request("/api/v1/quotations", { method: "POST", json: payload });
+}
+
+export function apiUpdateQuotation(id: number | string, payload: { title: string; content: string }) {
+  return request(`/api/v1/quotations/${encodeURIComponent(String(id))}`, {
+    method: "PUT",
+    json: payload,
+  });
+}
+
+export function apiDeleteQuotation(id: number | string) {
+  return request(`/api/v1/quotations/${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+  });
+}
+
 export function apiStorageSignUrl(payload: {
   bucket?: string;
   path: string;

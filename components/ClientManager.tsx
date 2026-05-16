@@ -137,7 +137,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
   const performDeleteClient = async () => {
     if (!deleteConfirm.id) return;
     try {
-      deleteClient(deleteConfirm.id);
+      await deleteClient(deleteConfirm.id);
       showToast(`Client "${deleteConfirm.name}" deleted successfully!`, "success");
     } catch (err: any) {
       showToast(err?.message || "Failed to delete client", "error");
@@ -145,6 +145,14 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
       setDeleteConfirm({ open: false });
     }
   };
+
+  const missingFields: string[] = [];
+  if (!formData.name?.trim()) missingFields.push("Client Name");
+  if (!formData.gstin?.trim()) missingFields.push("GSTIN No");
+  if (!formData.address?.trim()) missingFields.push("Address");
+  if (!formData.state?.trim()) missingFields.push("State");
+  if (!formData.stateCode?.trim()) missingFields.push("State Code");
+  const isFormDisabled = missingFields.length > 0 || isSubmitting;
 
   return (
     <div className="space-y-8">
@@ -221,7 +229,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
               rows={3}
               required
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              placeholder="Line 1&#10;Line 2&#10;Line 3"
+              placeholder={"Line 1\nLine 2\nLine 3"}
             ></textarea>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -271,55 +279,39 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
               </button>
             )}
             <div className="relative group">
-              {(() => {
-                const missingFields: string[] = [];
-                if (!formData.name?.trim()) missingFields.push("Client Name");
-                if (!formData.gstin?.trim()) missingFields.push("GSTIN No");
-                if (!formData.address?.trim()) missingFields.push("Address");
-                if (!formData.state?.trim()) missingFields.push("State");
-                if (!formData.stateCode?.trim()) missingFields.push("State Code");
-                const isDisabled = missingFields.length > 0 || isSubmitting;
-
-                return (
-                  <>
-                    <button
-                      disabled={isDisabled}
-                      type="submit"
-                      className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                        isDisabled
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                    >
-                      <PlusIcon className="w-4 h-4 mr-2" />
-                      {isSubmitting
-                        ? editingClient
-                          ? "Saving..."
-                          : "Adding..."
-                        : editingClient
-                        ? "Save Changes"
-                        : "Add Client"}
-                    </button>
-                    {isDisabled &&
-                      !isSubmitting &&
-                      missingFields.length > 0 && (
-                        <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
-                          <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
-                            <p className="font-semibold mb-1">
-                              Please fill required fields:
-                            </p>
-                            <ul className="list-disc list-inside space-y-0.5">
-                              {missingFields.map((field, index) => (
-                                <li key={index}>{field}</li>
-                              ))}
-                            </ul>
-                            <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                          </div>
-                        </div>
-                      )}
-                  </>
-                );
-              })()}
+              <button
+                disabled={isFormDisabled}
+                type="submit"
+                className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  isFormDisabled
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                {isSubmitting
+                  ? editingClient
+                    ? "Saving..."
+                    : "Adding..."
+                  : editingClient
+                  ? "Save Changes"
+                  : "Add Client"}
+              </button>
+              {isFormDisabled && !isSubmitting && missingFields.length > 0 && (
+                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
+                    <p className="font-semibold mb-1">
+                      Please fill required fields:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {missingFields.map((field, index) => (
+                        <li key={index}>{field}</li>
+                      ))}
+                    </ul>
+                    <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </form>
