@@ -8,6 +8,7 @@ import {
   apiListInvoices,
   apiGetInvoiceDetails,
   apiListBankDetails,
+  BASE_URL,
 } from "../utils/api";
 
 // html2canvas/jsPDF removed in favor of @react-pdf/renderer
@@ -230,7 +231,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     if (row.pdfUrl) {
       try {
         // Ensure URL is absolute
-        const BASE_URL = "http://localhost:8080";
         let absoluteUrl = row.pdfUrl;
         if (row.pdfUrl.startsWith("/api/")) {
           absoluteUrl = BASE_URL + row.pdfUrl;
@@ -335,47 +335,90 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               <th scope="col" className="px-6 py-3">
                 Amount
               </th>
+              <th scope="col" className="px-6 py-3">
+                Status
+              </th>
               <th scope="col" className="px-6 py-3 text-right">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="bg-white border-b hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {r.invoiceNumber}
-                </td>
-                <td className="px-6 py-4">{r.billedToName}</td>
-                <td className="px-6 py-4">{r.invoiceDate}</td>
-                <td className="px-6 py-4 font-medium text-gray-800">
-                  ₹{r.totalAmountAfterTax.toLocaleString("en-IN")}
-                </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button
-                    onClick={() => handleDownloadRow(r)}
-                    title="Download PDF"
-                    className="p-1 font-medium text-gray-500 hover:text-blue-600"
-                  >
-                    <DownloadIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleEditClick(r)}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  {onViewDetails && (
-                    <button
-                      onClick={() => onViewDetails(r.id)}
-                      className="font-medium text-gray-600 hover:underline"
-                    >
-                      View
-                    </button>
-                  )}
+            {isLoading && (
+              <tr>
+                <td colSpan={6} className="px-6 py-10 text-center">
+                  <div className="flex items-center justify-center gap-2 text-gray-400">
+                    <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    <span className="text-sm">Loading invoices...</span>
+                  </div>
                 </td>
               </tr>
-            ))}
+            )}
+            {!isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-16 text-center">
+                  <div className="flex flex-col items-center gap-3 text-gray-400">
+                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-500">No invoices yet</p>
+                    <p className="text-xs text-gray-400">Create your first invoice to get started.</p>
+                    <button
+                      onClick={() => setView("create-invoice")}
+                      className="mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5 mr-1" /> Create Invoice
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {!isLoading && rows.map((r) => {
+              // Find matching local invoice for status (fallback to Draft if not found)
+              const localInvoice = invoices.find(inv => inv.invoiceNumber === r.invoiceNumber);
+              const status = localInvoice?.status ?? InvoiceStatus.Draft;
+              return (
+                <tr key={r.id} className="bg-white border-b hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-900">
+                    {r.invoiceNumber}
+                  </td>
+                  <td className="px-6 py-4">{r.billedToName}</td>
+                  <td className="px-6 py-4">{r.invoiceDate}</td>
+                  <td className="px-6 py-4 font-medium text-gray-800">
+                    ₹{r.totalAmountAfterTax.toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={status} />
+                  </td>
+                  <td className="px-6 py-4 text-right space-x-2">
+                    <button
+                      onClick={() => handleDownloadRow(r)}
+                      title="Download PDF"
+                      className="p-1 font-medium text-gray-500 hover:text-blue-600"
+                    >
+                      <DownloadIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEditClick(r)}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    {onViewDetails && (
+                      <button
+                        onClick={() => onViewDetails(r.id)}
+                        className="font-medium text-gray-600 hover:underline"
+                      >
+                        View
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

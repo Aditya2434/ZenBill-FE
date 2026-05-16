@@ -93,8 +93,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
 
   return (
     <div
-      className="bg-white p-4 rounded-lg shadow-sm"
-      style={{ border: "1px solid green" }}
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
     >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2>

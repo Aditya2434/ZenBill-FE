@@ -15,10 +15,12 @@ import Login from "./components/auth/Login";
 import Signup from "./components/auth/Signup";
 import { Invoice } from "./types";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { RequireAuth } from "./hooks/useAuth";
+import { RequireAuth, useAuth } from "./hooks/useAuth";
 import DummyPDF from "./components/DummyPDF";
 import { PDFViewer } from "@react-pdf/renderer";
 import InvoiceView from "./components/InvoiceView";
+import QuotationEditor from "./components/QuotationEditor";
+import QuotationList from "./components/QuotationList";
 
 export type View =
   | "dashboard"
@@ -52,6 +54,7 @@ const App: React.FC = () => {
     loadError,
     refreshProducts,
   } = useProducts();
+  const { userEmail } = useAuth();
 
   const handleSetView = useCallback((view: View) => {
     setCurrentView(view);
@@ -139,16 +142,7 @@ const App: React.FC = () => {
           />
         );
       case "create-quotation":
-        return (
-          <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Generate Quotation
-            </h2>
-            <p className="text-gray-500 mt-2">
-              This feature is under construction and will be available soon!
-            </p>
-          </div>
-        );
+        return <QuotationList setView={handleSetView} />;
       case "clients":
         return (
           <ClientManager
@@ -239,7 +233,7 @@ const App: React.FC = () => {
         element={
           <RequireAuth>
             <div className="flex h-screen bg-gray-100 text-gray-800">
-              <Sidebar currentView={currentView} setView={handleSetView} />
+              <Sidebar currentView={currentView} setView={handleSetView} userEmail={userEmail} />
               <div className="flex-1 flex flex-col overflow-hidden">
                 <Header setView={handleSetView} />
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 md:p-8">
