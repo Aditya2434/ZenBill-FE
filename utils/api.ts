@@ -29,7 +29,6 @@ async function request(path: string, options: RequestOptions = {}) {
   if (!res.ok) {
     // Handle structured validation errors from backend
     if (data && data.errors && typeof data.errors === "object") {
-      // Map backend field names to user-friendly labels
       const fieldLabelMap: Record<string, string> = {
         billedToName: "Detail of Receiver (Billed To)",
         billedToCode: "State & Code",
@@ -178,7 +177,6 @@ export function apiUpdateBankDetail(
 }
 
 export async function apiDeleteBankDetail(bankDetailId: string | number) {
-  // Prefer RESTful path; fallback to body if BE expects no id in path
   try {
     return await request(
       `/api/v1/bank-details/${encodeURIComponent(String(bankDetailId))}`,
@@ -279,7 +277,7 @@ export function apiCreateProduct(payload: {
   return request("/api/v1/products", { method: "POST", json: payload });
 }
 
-// Storage API (Supabase via backend)
+// Storage API
 export async function apiStorageUpload(
   file: File,
   folder: string,
@@ -291,11 +289,10 @@ export async function apiStorageUpload(
   const form = new FormData();
   form.append("file", file);
 
-  // Cookie-based authentication: credentials will be sent automatically
   const res = await fetch(url.toString(), {
     method: "POST",
     body: form,
-    credentials: "include", // Send cookies with the request
+    credentials: "include", 
   });
   const dataText = await res.text();
   let data: any = undefined;
@@ -311,11 +308,8 @@ export async function apiStorageUpload(
       "Upload failed";
     throw new Error(message);
   }
-  // Return the inner payload so callers can access fields like url directly
   return data && data.data ? data.data : data;
 }
-
-// ─── Quotations API ────────────────────────────────────────────────────────────
 
 export function apiListQuotations() {
   return request("/api/v1/quotations");
@@ -346,7 +340,6 @@ export function apiStorageSignUrl(payload: {
   return request("/api/v1/storage/sign-url", { method: "POST", json: payload });
 }
 
-// Fetch image through backend proxy (for private buckets)
 export async function apiStorageGetImage(
   bucket: string,
   path: string
@@ -368,4 +361,28 @@ export async function apiStorageGetImage(
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+// ────────────────────────────────────────────────────────────
+// ORDER & CLIENT INVOICE APIs
+// ────────────────────────────────────────────────────────────
+
+export function apiCreateOrder(payload: any) {
+  return request("/api/orders", { method: "POST", json: payload });
+}
+
+export function apiGetClientOrders(clientId: string | number) {
+  return request(`/api/orders/client/${encodeURIComponent(String(clientId))}`);
+}
+
+export function apiUpdateOrder(orderId: string | number, payload: any) {
+  return request(`/api/orders/${encodeURIComponent(String(orderId))}`, { method: "PUT", json: payload });
+}
+
+export function apiDeleteOrder(orderId: string | number) {
+  return request(`/api/orders/${encodeURIComponent(String(orderId))}`, { method: "DELETE" });
+}
+
+export function apiGetClientInvoices(clientId: string | number) {
+  return request(`/api/v1/invoices/client/${encodeURIComponent(String(clientId))}`);
 }

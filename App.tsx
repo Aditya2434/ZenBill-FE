@@ -21,6 +21,7 @@ import { PDFViewer } from "@react-pdf/renderer";
 import InvoiceView from "./components/InvoiceView";
 import QuotationEditor from "./components/QuotationEditor";
 import QuotationList from "./components/QuotationList";
+import { ClientDetails } from "./components/ClientDetails";
 
 export type View =
   | "dashboard"
@@ -30,6 +31,7 @@ export type View =
   | "create-quotation"
   | "settings"
   | "clients"
+  | "client-details"
   | "products"
   | "DummyPDF"
   | "login"
@@ -39,9 +41,9 @@ export type View =
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
-  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<
-    string | number | null
-  >(null);
+  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<string | number | null>(null);
+  const [clientIdForDetails, setClientIdForDetails] = useState<string | null>(null);
+  
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
   const { clients, addClient, updateClient, deleteClient } = useClients();
@@ -143,6 +145,7 @@ const App: React.FC = () => {
         );
       case "create-quotation":
         return <QuotationList setView={handleSetView} />;
+      
       case "clients":
         return (
           <ClientManager
@@ -150,8 +153,36 @@ const App: React.FC = () => {
             addClient={addClient}
             updateClient={updateClient}
             deleteClient={deleteClient}
+            onViewDetails={(id) => {
+              setClientIdForDetails(id);
+              setCurrentView("client-details");
+            }}
           />
         );
+        
+      case "client-details":
+        return clientIdForDetails != null ? (
+          <ClientDetails
+            clientId={clientIdForDetails}
+            clients={clients}
+            invoices={invoices}
+            products={products}
+            setView={handleSetView}
+            updateClient={updateClient} // PASSED UPDATE CLIENT HERE
+          />
+        ) : (
+          <ClientManager
+            clients={clients}
+            addClient={addClient}
+            updateClient={updateClient}
+            deleteClient={deleteClient}
+            onViewDetails={(id) => {
+              setClientIdForDetails(id);
+              setCurrentView("client-details");
+            }}
+          />
+        );
+
       case "products":
         return (
           <ProductManager
@@ -232,11 +263,11 @@ const App: React.FC = () => {
         path="/*"
         element={
           <RequireAuth>
-            <div className="flex h-screen bg-gray-100 text-gray-800">
+            <div className="flex h-screen bg-gray-50 text-gray-800 font-sans">
               <Sidebar currentView={currentView} setView={handleSetView} userEmail={userEmail} />
               <div className="flex-1 flex flex-col overflow-hidden">
                 <Header setView={handleSetView} />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 md:p-8">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8">
                   {renderContent()}
                 </main>
               </div>

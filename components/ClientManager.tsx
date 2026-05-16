@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Client } from "../types";
 import { PlusIcon } from "./icons";
 import { Toast, ToastType } from "./Toast";
@@ -9,6 +9,7 @@ interface ClientManagerProps {
   addClient: (client: Omit<Client, "id" | "email">) => Promise<void> | void;
   updateClient: (client: Client) => Promise<void> | void;
   deleteClient: (clientId: string) => Promise<void> | void;
+  onViewDetails?: (clientId: string) => void;
 }
 
 const emptyClient: Omit<Client, "id" | "email"> = {
@@ -22,54 +23,21 @@ const emptyClient: Omit<Client, "id" | "email"> = {
 export const ClientManager: React.FC<ClientManagerProps> = ({
   clients,
   addClient,
-  updateClient,
-  deleteClient,
+  onViewDetails,
 }) => {
   const [formData, setFormData] = useState(emptyClient);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: ToastType;
-    isVisible: boolean;
-  }>({
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
     message: "",
     type: "success",
     isVisible: false,
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    open: boolean;
-    id?: string;
-    name?: string;
-  }>({ open: false });
 
-  const showToast = (message: string, type: ToastType) => {
-    // Automatically replace any existing toast with the new one
-    setToast({ message, type, isVisible: true });
-  };
+  const showToast = (message: string, type: ToastType) => setToast({ message, type, isVisible: true });
+  const hideToast = () => setToast((prev) => ({ ...prev, isVisible: false }));
 
-  const hideToast = () => {
-    setToast((prev) => ({ ...prev, isVisible: false }));
-  };
-
-  useEffect(() => {
-    if (editingClient) {
-      setFormData({
-        name: editingClient.name,
-        address: editingClient.address,
-        gstin: editingClient.gstin || "",
-        state: editingClient.state || "",
-        stateCode: editingClient.stateCode || "",
-      });
-    } else {
-      setFormData(emptyClient);
-    }
-  }, [editingClient]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -78,7 +46,6 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
     e.preventDefault();
     setErrorMsg("");
 
-    // Validate required fields
     const missingFields: string[] = [];
     if (!formData.name?.trim()) missingFields.push("Client Name");
     if (!formData.gstin?.trim()) missingFields.push("GSTIN No");
@@ -93,56 +60,13 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
 
     try {
       setIsSubmitting(true);
-      if (editingClient) {
-        await updateClient({ ...editingClient, ...formData });
-        showToast(`Client "${formData.name}" updated successfully!`, "success");
-      } else {
-        await addClient(formData);
-        showToast(`Client "${formData.name}" added successfully!`, "success");
-        setFormData(emptyClient);
-      }
-      setEditingClient(null);
+      await addClient(formData);
+      showToast(`Client "${formData.name}" added successfully!`, "success");
+      setFormData(emptyClient);
     } catch (err: any) {
       showToast(err?.message || "Operation failed.", "error");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleEdit = (client: Client) => {
-    setEditingClient(client);
-    // Scroll to the form
-    setTimeout(() => {
-      const clientForm = document.getElementById("client-form");
-      if (clientForm) {
-        clientForm.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        window.scrollTo(0, 0);
-      }
-    }, 100);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingClient(null);
-  };
-
-  const confirmDeleteClient = (client: Client) => {
-    setDeleteConfirm({
-      open: true,
-      id: client.id,
-      name: client.name,
-    });
-  };
-
-  const performDeleteClient = async () => {
-    if (!deleteConfirm.id) return;
-    try {
-      await deleteClient(deleteConfirm.id);
-      showToast(`Client "${deleteConfirm.name}" deleted successfully!`, "success");
-    } catch (err: any) {
-      showToast(err?.message || "Failed to delete client", "error");
-    } finally {
-      setDeleteConfirm({ open: false });
     }
   };
 
@@ -163,251 +87,103 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
         onClose={hideToast}
         duration={3000}
       />
-      <div id="client-form" className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800">
-          {editingClient ? "Edit Client" : "Add New Client"}
-        </h2>
-        <p className="text-sm text-gray-500 mt-1 mb-6">
-          {editingClient
-            ? `Updating details for ${editingClient.name}`
-            : "Fill in the details to add a new client."}
-        </p>
+      
+      {/* PREMIUM FORM CARD */}
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 ring-1 ring-black/5">
+        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Client</h2>
+        <p className="text-sm text-gray-500 mt-1 mb-8">Register a new client to begin billing and generating quotations.</p>
+        
         {errorMsg && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 flex items-center shadow-sm">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
             {errorMsg}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Client Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Client Name <span className="text-red-500">*</span></label>
+              <input type="text" name="name" value={formData.name} onChange={handleInputChange} required className="block w-full px-4 py-2.5 bg-gray-50/50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all sm:text-sm" placeholder="e.g. Acme Corp" />
             </div>
             <div>
-              <label
-                htmlFor="gstin"
-                className="block text-sm font-medium text-gray-700"
-              >
-                GSTIN No <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="gstin"
-                id="gstin"
-                value={formData.gstin}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">GSTIN No <span className="text-red-500">*</span></label>
+              <input type="text" name="gstin" value={formData.gstin} onChange={handleInputChange} required className="block w-full px-4 py-2.5 bg-gray-50/50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-mono sm:text-sm" placeholder="22AAAAA0000A1Z5" />
             </div>
           </div>
           <div>
-            <label
-              htmlFor="address"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Address <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="address"
-              id="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              rows={3}
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              placeholder={"Line 1\nLine 2\nLine 3"}
-            ></textarea>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Address <span className="text-red-500">*</span></label>
+            <textarea name="address" value={formData.address} onChange={handleInputChange} rows={3} required className="block w-full px-4 py-2.5 bg-gray-50/50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all sm:text-sm" placeholder={"Line 1\nLine 2\nLine 3"}></textarea>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label
-                htmlFor="state"
-                className="block text-sm font-medium text-gray-700"
-              >
-                State <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="state"
-                id="state"
-                value={formData.state}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">State <span className="text-red-500">*</span></label>
+              <input type="text" name="state" value={formData.state} onChange={handleInputChange} required className="block w-full px-4 py-2.5 bg-gray-50/50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all sm:text-sm" placeholder="e.g. Maharashtra" />
             </div>
             <div>
-              <label
-                htmlFor="stateCode"
-                className="block text-sm font-medium text-gray-700"
-              >
-                State Code <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="stateCode"
-                id="stateCode"
-                value={formData.stateCode}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">State Code <span className="text-red-500">*</span></label>
+              <input type="text" name="stateCode" value={formData.stateCode} onChange={handleInputChange} required className="block w-full px-4 py-2.5 bg-gray-50/50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all sm:text-sm" placeholder="e.g. 27" />
             </div>
           </div>
-          <div className="flex justify-end items-center space-x-3 pt-2">
-            {editingClient && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            )}
-            <div className="relative group">
-              <button
-                disabled={isFormDisabled}
-                type="submit"
-                className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isFormDisabled
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                {isSubmitting
-                  ? editingClient
-                    ? "Saving..."
-                    : "Adding..."
-                  : editingClient
-                  ? "Save Changes"
-                  : "Add Client"}
-              </button>
-              {isFormDisabled && !isSubmitting && missingFields.length > 0 && (
-                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
-                  <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 shadow-lg max-w-xs">
-                    <p className="font-semibold mb-1">
-                      Please fill required fields:
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {missingFields.map((field, index) => (
-                        <li key={index}>{field}</li>
-                      ))}
-                    </ul>
-                    <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex justify-end pt-4 border-t border-gray-100">
+            <button
+              disabled={isFormDisabled}
+              type="submit"
+              className={`inline-flex items-center px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 ${isFormDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 hover:shadow"}`}
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              {isSubmitting ? "Adding..." : "Add Client"}
+            </button>
           </div>
         </form>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Client List</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            View and manage your existing clients.
-          </p>
+      {/* PREMIUM LIST CARD */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 ring-1 ring-black/5 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Client Directory</h2>
+          <p className="text-sm text-gray-500 mt-1">Click on any client to open their dashboard and manage details.</p>
         </div>
         <div className="p-6">
           <DataTable<Client>
             data={clients}
+            onRowClick={(client) => onViewDetails?.(client.id)}
             columns={[
               {
                 header: "Client Name",
                 accessor: "name",
-                className: "font-medium text-gray-900",
+                className: "font-semibold text-gray-900",
               },
               {
                 header: "GSTIN No.",
-                accessor: "gstin",
+                accessor: (client) => <span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">{client.gstin || "-"}</span>,
               },
               {
                 header: "Address",
-                accessor: (client) => (
-                  <span className="whitespace-pre-line">
-                    {client.address || "-"}
-                  </span>
-                ),
+                accessor: (client) => <span className="whitespace-pre-line text-xs text-gray-500 truncate max-w-xs inline-block">{client.address || "-"}</span>,
               },
               {
                 header: "State",
-                accessor: "state",
+                accessor: (client) => <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/20">{client.state || "-"}</span>,
               },
               {
-                header: "State Code",
-                accessor: "stateCode",
-              },
+                header: "",
+                accessor: () => (
+                  <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                ),
+                className: "text-right w-10",
+              }
             ]}
             searchable={true}
-            searchPlaceholder="Search clients by name, GSTIN, address, state, or state code..."
+            searchPlaceholder="Search clients..."
             searchKeys={["name", "gstin", "address", "state", "stateCode"]}
             itemsPerPage={10}
             emptyMessage="No clients found. Add one using the form above."
-            renderActions={(client) => (
-              <>
-                <button
-                  onClick={() => handleEdit(client)}
-                  className="font-medium text-blue-600 hover:underline"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => confirmDeleteClient(client)}
-                  className="font-medium text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
-              </>
-            )}
           />
         </div>
       </div>
-
-      {deleteConfirm.open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-            <h3 className="text-lg font-medium text-gray-900">
-              Delete client?
-            </h3>
-            <p className="text-sm text-gray-600 mt-2">
-              Are you sure you want to delete "{deleteConfirm.name}"? This
-              action cannot be undone.
-            </p>
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={performDeleteClient}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
