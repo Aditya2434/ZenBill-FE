@@ -22,6 +22,8 @@ import {
   apiListBankDetails,
   apiListInvoices,
   apiStorageUpload,
+  apiGetClientOrders,
+  apiGetClientInvoices,
 } from "../utils/api";
 import DummyPDF from "./DummyPDF";
 import { Toast, ToastType } from "./Toast";
@@ -123,32 +125,48 @@ const FormField = ({
 }: {
   label: string;
   name: string;
-  value: any;
-  onChange: any;
+  value: string | number | undefined;
+  onChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
   fullWidth?: boolean;
   type?: string;
   disabled?: boolean;
+  [key: string]: any;
 }) => (
   <div className={`flex items-center ${fullWidth ? "w-full" : ""}`}>
     <label htmlFor={name} className="w-1/3 text-sm font-semibold">
       {label}
     </label>
     <span className="px-2">:</span>
-    <input
-      type={type}
-      id={name}
-      name={name}
-      value={value || ""}
-      onChange={onChange}
-      disabled={disabled}
-      className={`flex-grow p-1 border border-gray-300 text-sm bg-white text-gray-900 ${
-        disabled ? "bg-gray-100 cursor-not-allowed" : ""
-      }`}
-      {...props}
-    />
+    {type === 'textarea' ? (
+       <textarea
+          id={name}
+          name={name}
+          value={value || ""}
+          onChange={onChange}
+          disabled={disabled}
+          className={`flex-grow p-1 border border-gray-300 text-sm bg-white text-gray-900 ${
+            disabled ? "bg-gray-100 cursor-not-allowed" : ""
+          }`}
+          {...props}
+       />
+    ) : (
+      <input
+        type={type}
+        id={name}
+        name={name}
+        value={value || ""}
+        onChange={onChange}
+        disabled={disabled}
+        className={`flex-grow p-1 border border-gray-300 text-sm bg-white text-gray-900 ${
+          disabled ? "bg-gray-100 cursor-not-allowed" : ""
+        }`}
+        {...props}
+      />
+    )}
   </div>
 );
 
+// This explicit export is what Vite is looking for
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   existingInvoice,
   addInvoice,
@@ -159,11 +177,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clients,
   products,
 }) => {
-  console.log(existingInvoice, "existingInvoice");
-  console.log(profile, "profile");
-  console.log(invoices, "invoices");
-  console.log(clients, "clients");
-  console.log(products, "products");
   const emptyInvoice = useMemo(
     () => ({
       client: {
@@ -241,6 +254,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
+  // Mapped object of true REMAINING balances: { productName: remainingQuantity }
+  const [orderedProductLimits, setOrderedProductLimits] = useState<Record<string, number>>({});
+
   const showToast = (message: string, type: ToastType) => {
     setToast({ message, type, isVisible: true });
   };
@@ -249,7 +265,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setToast((prev) => ({ ...prev, isVisible: false }));
   };
 
-  // Generate next invoice number based on backend data
   const generateNextInvoiceNumberFromBackend = async (
     companyProfile: CompanyProfile
   ): Promise<string> => {
@@ -291,14 +306,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         "Failed to generate invoice number from backend, falling back to local data:",
         error
       );
-      // Fallback to local generation
       return generateNextInvoiceNumber(invoices, companyProfile);
     }
   };
 
-  // Helper function to get financial year string (same as in useInvoices)
   const getFinancialYearString = (date: Date): string => {
-    const month = date.getMonth() + 1; // getMonth() returns 0-11
+    const month = date.getMonth() + 1;
     const year = date.getFullYear();
     const financialYearStart = month >= 4 ? year : year - 1;
     const financialYearEnd = financialYearStart + 1;
@@ -307,7 +320,74 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     ).slice(-2)}`;
   };
 
-  // Fetch bank details and set active bank detail
+  useEffect(() => {
+    if (invoice.client && invoice.client.id) {
+      Promise.all([
+        apiGetClientOrders(invoice.client.id),
+        apiGetClientInvoices(invoice.client.id)
+      ])
+        .then(([orderRes, invoiceRes]) => {
+          const ordered: Record<string, number> = {};
+          const billed: Record<string, number> = {};
+
+          if (orderRes && orderRes.success && Array.isArray(orderRes.data)) {
+            orderRes.data.forEach((order: any) => {
+              if (Array.isArray(order.items)) {
+                order.items.forEach((item: any) => {
+                  ordered[item.productName] = (ordered[item.productName] || 0) + item.quantity;
+                });
+              }
+            });
+          }
+
+          if (invoiceRes && invoiceRes.success && Array.isArray(invoiceRes.data)) {
+            invoiceRes.data.forEach((inv: any) => {
+              if (existingInvoice && String(inv.id) === String(existingInvoice.id)) {
+                return;
+              }
+              if (Array.isArray(inv.items)) {
+                inv.items.forEach((item: any) => {
+                  const name = item.description || item.productName;
+                  if (name) {
+                    billed[name] = (billed[name] || 0) + (Number(item.quantity) || 0);
+                  }
+                });
+              }
+            });
+          }
+
+          const limits: Record<string, number> = {};
+          Object.keys(ordered).forEach((name) => {
+            const remaining = ordered[name] - (billed[name] || 0);
+            limits[name] = Math.max(0, remaining);
+          });
+          
+          setOrderedProductLimits(limits);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch client orders/invoices:", err);
+          setOrderedProductLimits({});
+        });
+    } else {
+      setOrderedProductLimits({});
+    }
+  }, [invoice.client?.id, existingInvoice]);
+
+  const productOptionsForClient = useMemo(() => {
+    if (invoice.client?.id && Object.keys(orderedProductLimits).length > 0) {
+      return products
+        .filter((p) => orderedProductLimits[p.name] !== undefined)
+        .map((p) => ({
+          value: p.name,
+          label: `${p.name} (Remaining: ${orderedProductLimits[p.name]})`,
+        }));
+    }
+    return products.map((p) => ({
+      value: p.name,
+      label: p.name,
+    }));
+  }, [products, invoice.client?.id, orderedProductLimits]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -319,52 +399,35 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           : [];
         setBankDetailsList(list);
 
-        // Find active bank detail and set it for new invoices only
         if (!existingInvoice) {
           const activeBankDetail = list.find((bd: any) => bd.active === true);
           if (activeBankDetail) {
-            // Set the selected bank ID
             setSelectedBankId(String(activeBankDetail.id));
-            // Convert bank detail to BankDetails format
             const bankDetails = {
-              accountName:
-                activeBankDetail.accountName ??
-                activeBankDetail.account_name ??
-                "",
-              accountNumber:
-                activeBankDetail.accountNumber ??
-                activeBankDetail.account_number ??
-                "",
-              bankName:
-                activeBankDetail.bankName ?? activeBankDetail.bank_name ?? "",
-              branch:
-                activeBankDetail.bankBranch ?? activeBankDetail.branch ?? "",
+              accountName: activeBankDetail.accountName ?? activeBankDetail.account_name ?? "",
+              accountNumber: activeBankDetail.accountNumber ?? activeBankDetail.account_number ?? "",
+              bankName: activeBankDetail.bankName ?? activeBankDetail.bank_name ?? "",
+              branch: activeBankDetail.bankBranch ?? activeBankDetail.branch ?? "",
               ifsc: activeBankDetail.ifscCode ?? activeBankDetail.ifsc ?? "",
             };
-            setInvoice((prev) => ({
-              ...prev,
-              bankDetails,
-            }));
+            setInvoice((prev) => ({ ...prev, bankDetails }));
           }
         }
-      } catch (_) {
-        // Fallback to default bank details if API fails
+      } catch (error) {
+        console.error(error);
       }
     })();
   }, [existingInvoice]);
 
-  // Convert logo and other images to base64 for PDF
   useEffect(() => {
     const convertImageToBase64 = async (
       imageUrl: string | undefined,
       isLogo: boolean = false
     ): Promise<string> => {
       if (!imageUrl) return "";
-      // If already base64, return as is
       if (imageUrl.startsWith("data:")) return imageUrl;
 
       try {
-        // Ensure URL is absolute
         let absoluteUrl = imageUrl;
         if (imageUrl.startsWith("/api/")) {
           const BASE_URL = "http://localhost:8080";
@@ -378,24 +441,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         } catch (_) {}
 
         const response = await fetch(absoluteUrl, { headers });
-        if (!response.ok) {
-          console.error(
-            `Failed to fetch image: ${absoluteUrl}, status: ${response.status}`
-          );
-          return "";
-        }
+        if (!response.ok) return "";
+        
         const blob = await response.blob();
-
-        // Check if it's an .ico file - convert to PNG for react-pdf compatibility
-        const isIco =
-          absoluteUrl.toLowerCase().includes(".ico") ||
-          blob.type === "application/octet-stream" ||
-          blob.type === "image/x-icon" ||
-          blob.type === "image/vnd.microsoft.icon";
+        const isIco = absoluteUrl.toLowerCase().includes(".ico") || blob.type === "application/octet-stream" || blob.type === "image/x-icon" || blob.type === "image/vnd.microsoft.icon";
 
         if (isIco && isLogo) {
-          console.log("Converting .ico to PNG for PDF compatibility");
-          // Convert .ico to PNG using canvas
           return new Promise((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -410,29 +461,21 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   canvas.toBlob((pngBlob) => {
                     if (pngBlob) {
                       const reader = new FileReader();
-                      reader.onloadend = () => {
-                        console.log("Successfully converted .ico to PNG");
-                        resolve(reader.result as string);
-                      };
+                      reader.onloadend = () => resolve(reader.result as string);
                       reader.onerror = reject;
                       reader.readAsDataURL(pngBlob);
                     } else {
-                      console.error("Failed to create PNG blob");
-                      reject(new Error("Failed to convert to PNG"));
+                      reject(new Error("Failed to create PNG blob"));
                     }
                   }, "image/png");
                 } else {
                   reject(new Error("Failed to get canvas context"));
                 }
               } catch (err) {
-                console.error("Error in canvas conversion:", err);
                 reject(err);
               }
             };
-            img.onerror = (err) => {
-              console.error("Failed to load image for conversion:", err);
-              reject(err);
-            };
+            img.onerror = reject;
             img.src = URL.createObjectURL(blob);
           });
         }
@@ -441,57 +484,30 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           const reader = new FileReader();
           reader.onloadend = () => {
             const result = reader.result as string;
-            if (result) {
-              resolve(result);
-            } else {
-              reject(new Error("Failed to read image data"));
-            }
+            if (result) resolve(result);
+            else reject(new Error("Failed to read image data"));
           };
           reader.onerror = () => reject(new Error("Failed to read image"));
           reader.readAsDataURL(blob);
         });
       } catch (error) {
-        console.error("Failed to convert image to base64:", imageUrl, error);
         return "";
       }
     };
 
     (async () => {
-      const logo = await convertImageToBase64(profile.logo, true);
-      const seal = await convertImageToBase64(profile.companySeal, false);
-      const signature = await convertImageToBase64(
-        profile.authorizedSignature,
-        false
-      );
-      console.log("Image conversion results:", {
-        logoOriginal: profile.logo,
-        logoConverted: logo
-          ? `${logo.substring(0, 30)}... (${logo.length} chars, type: ${
-              logo.split(";")[0]
-            })`
-          : "failed",
-        sealConverted: seal
-          ? `${seal.substring(0, 30)}... (${seal.length} chars)`
-          : "failed",
-        signatureConverted: signature
-          ? `${signature.substring(0, 30)}... (${signature.length} chars)`
-          : "failed",
-      });
-      setLogoBase64(logo);
-      setCompanySealBase64(seal);
-      setSignatureBase64(signature);
+      setLogoBase64(await convertImageToBase64(profile.logo, true));
+      setCompanySealBase64(await convertImageToBase64(profile.companySeal, false));
+      setSignatureBase64(await convertImageToBase64(profile.authorizedSignature, false));
     })();
   }, [profile.logo, profile.companySeal, profile.authorizedSignature]);
 
-  // Update selected bank ID when invoice bank details change
   useEffect(() => {
     if (bankDetailsList.length > 0 && invoice.bankDetails) {
       const matchingBank = bankDetailsList.find(
         (bd) =>
-          (bd.accountName ?? bd.account_name) ===
-            invoice.bankDetails?.accountName &&
-          (bd.accountNumber ?? bd.account_number) ===
-            invoice.bankDetails?.accountNumber
+          (bd.accountName ?? bd.account_name) === invoice.bankDetails?.accountName &&
+          (bd.accountNumber ?? bd.account_number) === invoice.bankDetails?.accountNumber
       );
       if (matchingBank && String(matchingBank.id) !== selectedBankId) {
         setSelectedBankId(String(matchingBank.id));
@@ -509,7 +525,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       } else {
         setSameAsBilling(true);
       }
-      // Populate invoice number prefix and editable sequential from existing invoice
       const parts = existingInvoice.invoiceNumber.split("/");
       if (parts.length === 3) {
         setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
@@ -518,24 +533,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     } else {
       setInvoice(emptyInvoice);
       setSameAsBilling(true);
-      // Generate invoice number from backend data
       (async () => {
         try {
-          const nextInvoiceNumber = await generateNextInvoiceNumberFromBackend(
-            profile
-          );
+          const nextInvoiceNumber = await generateNextInvoiceNumberFromBackend(profile);
           const parts = nextInvoiceNumber.split("/");
           if (parts.length === 3) {
             setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
             setInvoiceNumberSequential(parts[2]);
           }
         } catch (error) {
-          console.error("Failed to generate invoice number:", error);
-          // Fallback to local generation
-          const nextInvoiceNumber = generateNextInvoiceNumber(
-            invoices,
-            profile
-          );
+          const nextInvoiceNumber = generateNextInvoiceNumber(invoices, profile);
           const parts = nextInvoiceNumber.split("/");
           if (parts.length === 3) {
             setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
@@ -610,31 +617,21 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormError(null);
-    setInvoiceNumberError(null); // Clear invoice number specific error
+    setInvoiceNumberError(null); 
     const { value } = e.target;
-    const numericValue = value.replace(/[^0-9]/g, ""); // Only allow numbers
+    const numericValue = value.replace(/[^0-9]/g, ""); 
     if (numericValue.length <= 3) {
       setInvoiceNumberSequential(numericValue);
-      // Live validations: duplicate and highest-number threshold
-      const candidate = `${invoiceNumberPrefix}${numericValue.padStart(
-        3,
-        "0"
-      )}`;
+      const candidate = `${invoiceNumberPrefix}${numericValue.padStart(3, "0")}`;
       const isDuplicate = invoices.some(
         (inv) => inv.invoiceNumber.toLowerCase() === candidate.toLowerCase()
       );
-      const highestNumber = getHighestInvoiceNumber(
-        invoices,
-        invoiceNumberPrefix
-      );
+      const highestNumber = getHighestInvoiceNumber(invoices, invoiceNumberPrefix);
       let newError: string | null = null;
       if (isDuplicate) {
         newError = "Invoice number already exists.";
       } else if (numericValue !== "" && Number(numericValue) <= highestNumber) {
-        newError = `Invoice no. must be > ${String(highestNumber).padStart(
-          3,
-          "0"
-        )}.`;
+        newError = `Invoice no. must be > ${String(highestNumber).padStart(3, "0")}.`;
       }
       setFormError(newError);
     }
@@ -649,19 +646,34 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       if (i === index) {
         const updatedItem = { ...item, [field]: value };
 
-        // If description changes, check for product match and autofill
         if (field === "description") {
           const selectedProduct = products.find((p) => p.name === value);
           if (selectedProduct) {
             updatedItem.hsnCode = selectedProduct.hsnCode || "";
             updatedItem.uom = selectedProduct.uom || "";
           }
+
+          if (invoice.client?.id && orderedProductLimits[value as string] !== undefined) {
+            const maxLimit = orderedProductLimits[value as string];
+            if (updatedItem.quantity > maxLimit) {
+               updatedItem.quantity = maxLimit;
+               showToast(`Quantity capped at ${maxLimit} (Remaining Balance)`, "error");
+            }
+          }
         }
 
         if (field === "quantity" || field === "unitPrice") {
-          // Convert to number and ensure no leading zeros
-          const numericValue = value === "" ? 0 : Number(value);
-          updatedItem[field] = isNaN(numericValue) ? 0 : numericValue;
+          let numericValue = value === "" ? 0 : Number(value);
+          numericValue = isNaN(numericValue) ? 0 : numericValue;
+
+          if (field === "quantity" && invoice.client?.id && orderedProductLimits[updatedItem.description] !== undefined) {
+             const maxLimit = orderedProductLimits[updatedItem.description];
+             if (numericValue > maxLimit) {
+                numericValue = maxLimit;
+                showToast(`Cannot exceed remaining balance of ${maxLimit}.`, "error");
+             }
+          }
+          updatedItem[field] = numericValue;
         }
         return updatedItem;
       }
@@ -790,7 +802,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleDownloadPdf = async () => {
     try {
-      // Create profile with base64 images for PDF
       const profileForPdf = {
         ...profile,
         logo: logoBase64 || profile.logo || "",
@@ -805,16 +816,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const link = document.createElement("a");
       link.href = url;
 
-      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
       const invoiceNum = previewInvoiceData.invoiceNumber.replace(/\//g, "-");
       const date = new Date(previewInvoiceData.issueDate || Date.now());
       const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
         date.getMonth() + 1
       ).padStart(2, "0")}-${date.getFullYear()}`;
       const billedToName = (previewInvoiceData.client?.name || "")
-        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
-        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
-        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+        .replace(/[^a-zA-Z0-9]/g, "-") 
+        .replace(/-+/g, "-") 
+        .replace(/^-|-$/g, ""); 
 
       link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
@@ -828,7 +838,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     invoiceData: Invoice
   ): Promise<string | null> => {
     try {
-      // Create profile with base64 images for PDF
       const profileForPdf = {
         ...profile,
         logo: logoBase64 || profile.logo || "",
@@ -837,34 +846,29 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           signatureBase64 || profile.authorizedSignature || "",
       };
 
-      // Generate PDF blob
       const blob = await pdf(
         <DummyPDF invoice={invoiceData} profile={profileForPdf} />
       ).toBlob();
 
-      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
       const invoiceNum = invoiceData.invoiceNumber.replace(/\//g, "-");
       const date = new Date(invoiceData.issueDate || Date.now());
       const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(
         date.getMonth() + 1
       ).padStart(2, "0")}-${date.getFullYear()}`;
       const billedToName = (invoiceData.client?.name || "")
-        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
-        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
-        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+        .replace(/[^a-zA-Z0-9]/g, "-") 
+        .replace(/-+/g, "-") 
+        .replace(/^-|-$/g, ""); 
       const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
 
-      // Convert blob to File for upload
       const file = new File([blob], fileName, { type: "application/pdf" });
 
-      // Upload to Supabase using existing storage endpoint
       const uploadResult: any = await apiStorageUpload(
         file,
         "invoices",
         "document"
       );
 
-      // Return the URL from the upload result
       return uploadResult?.url || null;
     } catch (err) {
       console.error("Error generating or uploading PDF:", err);
@@ -882,7 +886,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     };
 
     if (existingInvoice && updateInvoice) {
-      // Map to BE payload for update
       const payload: any = {
         invoiceDate: (cleanedInvoiceData as any).issueDate,
         transportMode: (cleanedInvoiceData as any).transportMode || null,
@@ -939,7 +942,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
-        // Generate and upload PDF before updating invoice
         const pdfUrl = await generateAndUploadPdf(
           cleanedInvoiceData as Invoice
         );
@@ -950,24 +952,20 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         await apiUpdateInvoice((existingInvoice as any).id, payload);
         updateInvoice(cleanedInvoiceData as Invoice);
         showToast("Invoice updated successfully!", "success");
-        setInvoiceNumberError(null); // Clear any invoice number errors on success
+        setInvoiceNumberError(null); 
 
-        // Delay navigation to show toast message
         setTimeout(() => {
           setView("invoices");
         }, 1500);
       } catch (e: any) {
-        // Show detailed validation errors in toast
         const errorMessage = e?.message || "Failed to update invoice";
         showToast(errorMessage, "error");
 
-        // Check if this is an invoice number specific error
         if (e?.validationErrors && e.validationErrors.invoiceNumber) {
           setInvoiceNumberError(e.validationErrors.invoiceNumber);
         } else if (errorMessage.toLowerCase().includes("invoice number")) {
           setInvoiceNumberError(errorMessage);
         } else {
-          // Set general form error for other validation issues
           setFormError(errorMessage);
         }
       }
@@ -975,8 +973,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const finalSequential = invoiceNumberSequential.padStart(3, "0");
       const fullInvoiceNumber = `${invoiceNumberPrefix}${finalSequential}`;
 
-      // Check for duplicates against backend data instead of local state
-      // The backend will also validate this, but we can provide immediate feedback
       try {
         const backendInvoices = await apiListInvoices();
         const invoiceList = Array.isArray(backendInvoices)
@@ -996,7 +992,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           return;
         }
 
-        // Check if the number is sequential based on backend data
         const backendInvoicesForPrefix = invoiceList.filter((inv: any) =>
           String(inv.invoiceNumber || "").startsWith(invoiceNumberPrefix)
         );
@@ -1019,18 +1014,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           return;
         }
       } catch (e: any) {
-        // If we can't check backend, show warning but allow to proceed
         console.warn("Could not validate invoice number against backend:", e);
       }
 
-      // Create invoice data with full invoice number for PDF generation
       const invoiceDataForPdf = {
         ...cleanedInvoiceData,
         invoiceNumber: fullInvoiceNumber,
-        id: "temp-id", // Temporary ID for PDF generation
+        id: "temp-id", 
       } as Invoice;
 
-      // Map to BE payload
       const payload: any = {
         invoiceDate: (cleanedInvoiceData as any).issueDate,
         transportMode: (cleanedInvoiceData as any).transportMode || null,
@@ -1087,7 +1079,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       };
 
       try {
-        // Generate and upload PDF before creating invoice
         const pdfUrl = await generateAndUploadPdf(invoiceDataForPdf);
         if (pdfUrl) {
           payload.pdfUrl = pdfUrl;
@@ -1095,24 +1086,20 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         await apiCreateInvoice(payload);
         showToast("Invoice created successfully!", "success");
-        setInvoiceNumberError(null); // Clear any invoice number errors on success
+        setInvoiceNumberError(null); 
 
-        // Delay navigation to show toast message
         setTimeout(() => {
           setView("invoices");
         }, 1500);
       } catch (e: any) {
-        // Show detailed validation errors in toast
         const errorMessage = e?.message || "Failed to save invoice";
         showToast(errorMessage, "error");
 
-        // Check if this is an invoice number specific error
         if (e?.validationErrors && e.validationErrors.invoiceNumber) {
           setInvoiceNumberError(e.validationErrors.invoiceNumber);
         } else if (errorMessage.toLowerCase().includes("invoice number")) {
           setInvoiceNumberError(errorMessage);
         } else {
-          // Set general form error for other validation issues
           setFormError(errorMessage);
         }
       }
@@ -1216,7 +1203,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         >
           <div
             className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
           >
             <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
               <h3 className="text-xl font-semibold text-gray-800">
@@ -1284,7 +1271,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         >
           <div
             className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
           >
             <h3 className="text-lg font-medium text-gray-900">
               Invoice Number
@@ -1349,7 +1336,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         <div className="border-2 border-black p-4 space-y-2 text-sm">
           {/* Header */}
           <div className="flex justify-between items-start">
-            {/* Section 1: Logo */}
             <div
               className="company-logo"
               style={{ width: "84px", flexShrink: 0 }}
@@ -1359,7 +1345,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   src={profile.logo}
                   alt="Company Logo"
                   className="h-20 w-20 object-contain"
-                  onError={(e) => {
+                  onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                     console.error("Failed to load logo:", profile.logo);
                     const target = e.target as HTMLImageElement;
                     target.style.display = "none";
@@ -1373,9 +1359,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       parent.appendChild(fallback);
                     }
                   }}
-                  onLoad={() => {
-                    console.log("Logo loaded successfully:", profile.logo);
-                  }}
                 />
               ) : (
                 <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded">
@@ -1384,7 +1367,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
             </div>
 
-            {/* Section 2: Company Details */}
             <div className="company-name text-center px-4 flex-grow">
               <p className="font-bold text-3xl break-words">
                 {profile.companyName}
@@ -1395,13 +1377,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </p>
             </div>
 
-            {/* Section 3: Empty Placeholder */}
             <div
               className="empty-placeholder"
               style={{ width: "84px", flexShrink: 0, padding: "16px" }}
-            >
-              {/* Empty as per request */}
-            </div>
+            ></div>
           </div>
           <h2 className="text-center font-bold text-lg underline">
             TAX INVOICE
@@ -1529,7 +1508,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <Dropdown
                   id="client"
                   value={invoice.client.id}
-                  onChange={handleClientChange}
+                  onChange={(selectedValue: string) => handleClientChange(selectedValue)}
                   placeholder="Select a client or enter details manually"
                   options={[
                     {
@@ -1549,7 +1528,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 label="Name"
                 name="name"
                 value={invoice.client.name}
-                onChange={(e) => handleNestedChange("client", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("client", e)}
               />
               <div className="flex items-start">
                 <label
@@ -1563,7 +1542,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   id="client-address"
                   name="address"
                   value={invoice.client.address || ""}
-                  onChange={(e) => handleNestedChange("client", e)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNestedChange("client", e)}
                   rows={3}
                   className="flex-grow p-1 border border-gray-300 text-sm bg-white text-gray-900"
                 />
@@ -1572,7 +1551,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 label="GSTIN"
                 name="gstin"
                 value={invoice.client.gstin}
-                onChange={(e) => handleNestedChange("client", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("client", e)}
               />
               <FormField
                 label="State & Code"
@@ -1580,7 +1559,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 value={`${invoice.client.state || ""} ${
                   invoice.client.stateCode || ""
                 }`}
-                onChange={(e) => handleNestedChange("client", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("client", e)}
               />
             </div>
             <div className="p-2 space-y-1">
@@ -1593,7 +1572,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="checkbox"
                     id="sameAsBilling"
                     checked={sameAsBilling}
-                    onChange={(e) => setSameAsBilling(e.target.checked)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSameAsBilling(e.target.checked)}
                     className="mr-1"
                   />
                   <label htmlFor="sameAsBilling">Same as billing</label>
@@ -1603,7 +1582,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <Dropdown
                   id="shippingClient"
                   value=""
-                  onChange={handleShippingClientChange}
+                  onChange={(selectedValue: string) => handleShippingClientChange(selectedValue)}
                   disabled={sameAsBilling}
                   placeholder="Select a client or enter details manually"
                   options={[
@@ -1624,7 +1603,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 label="Name"
                 name="name"
                 value={invoice.shippingDetails?.name}
-                onChange={(e) => handleNestedChange("shippingDetails", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("shippingDetails", e)}
                 disabled={sameAsBilling}
               />
               <div className="flex items-start">
@@ -1639,7 +1618,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   id="shipping-address"
                   name="address"
                   value={invoice.shippingDetails?.address || ""}
-                  onChange={(e) => handleNestedChange("shippingDetails", e)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNestedChange("shippingDetails", e)}
                   disabled={sameAsBilling}
                   rows={3}
                   className={`flex-grow p-1 border border-gray-300 text-sm bg-white text-gray-900 ${
@@ -1651,7 +1630,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 label="GSTIN"
                 name="gstin"
                 value={invoice.shippingDetails?.gstin}
-                onChange={(e) => handleNestedChange("shippingDetails", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("shippingDetails", e)}
                 disabled={sameAsBilling}
               />
               <FormField
@@ -1660,7 +1639,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 value={`${invoice.shippingDetails?.state || ""} ${
                   invoice.shippingDetails?.stateCode || ""
                 }`}
-                onChange={(e) => handleNestedChange("shippingDetails", e)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("shippingDetails", e)}
                 disabled={sameAsBilling}
               />
             </div>
@@ -1690,14 +1669,11 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div className="relative">
                     <Combobox
                       value={item.description}
-                      onChange={(value) =>
+                      onChange={(value: string) =>
                         handleItemChange(index, "description", value)
                       }
                       placeholder="Type item description or select from list"
-                      options={products.map((p) => ({
-                        value: p.name,
-                        label: p.name,
-                      }))}
+                      options={productOptionsForClient}
                       className="w-full"
                     />
                   </div>
@@ -1706,7 +1682,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="text"
                     placeholder="HSN"
                     value={item.hsnCode || ""}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleItemChange(index, "hsnCode", e.target.value)
                     }
                     className="w-full p-1 border border-gray-300 bg-white text-gray-900"
@@ -1715,7 +1691,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="text"
                     placeholder="UOM"
                     value={item.uom || ""}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleItemChange(index, "uom", e.target.value)
                     }
                     className="w-full p-1 border border-gray-300 bg-white text-gray-900"
@@ -1724,7 +1700,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="number"
                     placeholder="Qty"
                     value={item.quantity === 0 ? "" : item.quantity}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleItemChange(index, "quantity", e.target.value)
                     }
                     className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -1733,7 +1709,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="number"
                     placeholder="Price"
                     value={item.unitPrice === 0 ? "" : item.unitPrice}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleItemChange(index, "unitPrice", e.target.value)
                     }
                     className="w-full p-1 border border-gray-300 bg-white text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -1888,7 +1864,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <div className="mb-2">
                 <Dropdown
                   value={selectedBankId}
-                  onChange={(selectedId) => {
+                  onChange={(selectedId: string) => {
                     setSelectedBankId(selectedId);
                     const selectedBank = bankDetailsList.find(
                       (bd) => String(bd.id) === selectedId
@@ -1931,31 +1907,31 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
               label="A/C NAME"
               name="accountName"
               value={invoice.bankDetails?.accountName}
-              onChange={(e) => handleNestedChange("bankDetails", e)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("bankDetails", e)}
             />
             <FormField
               label="A/C NO"
               name="accountNumber"
               value={invoice.bankDetails?.accountNumber}
-              onChange={(e) => handleNestedChange("bankDetails", e)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("bankDetails", e)}
             />
             <FormField
               label="BANK"
               name="bankName"
               value={invoice.bankDetails?.bankName}
-              onChange={(e) => handleNestedChange("bankDetails", e)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("bankDetails", e)}
             />
             <FormField
               label="BRANCH"
               name="branch"
               value={invoice.bankDetails?.branch}
-              onChange={(e) => handleNestedChange("bankDetails", e)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("bankDetails", e)}
             />
             <FormField
               label="IFSC"
               name="ifsc"
               value={invoice.bankDetails?.ifsc}
-              onChange={(e) => handleNestedChange("bankDetails", e)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNestedChange("bankDetails", e)}
             />
 
             <div>

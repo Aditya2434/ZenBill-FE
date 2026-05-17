@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
@@ -7,6 +7,7 @@ import { InvoiceForm } from "./components/InvoiceForm";
 import { Profile } from "./components/Profile";
 import { ClientManager } from "./components/ClientManager";
 import { ProductManager } from "./components/ProductManager";
+import { AccountSettings } from "./components/AccountSettings";
 import { useInvoices } from "./hooks/useInvoices";
 import { useProfile } from "./hooks/useProfile";
 import { useClients } from "./hooks/useClients";
@@ -30,6 +31,7 @@ export type View =
   | "edit-invoice"
   | "create-quotation"
   | "settings"
+  | "account" 
   | "clients"
   | "client-details"
   | "products"
@@ -39,11 +41,23 @@ export type View =
   | "invoice-details";
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>("dashboard");
-  const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
-  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<string | number | null>(null);
-  const [clientIdForDetails, setClientIdForDetails] = useState<string | null>(null);
-  
+  const [currentView, setCurrentView] = useState<View>(() => {
+    return (sessionStorage.getItem("zenbill_currentView") as View) || "dashboard";
+  });
+
+  const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(() => {
+    const stored = sessionStorage.getItem("zenbill_invoiceToEdit");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const [invoiceIdForDetails, setInvoiceIdForDetails] = useState<string | number | null>(() => {
+    return sessionStorage.getItem("zenbill_invoiceIdForDetails") || null;
+  });
+
+  const [clientIdForDetails, setClientIdForDetails] = useState<string | null>(() => {
+    return sessionStorage.getItem("zenbill_clientIdForDetails") || null;
+  });
+
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
   const { clients, addClient, updateClient, deleteClient } = useClients();
@@ -57,6 +71,34 @@ const App: React.FC = () => {
     refreshProducts,
   } = useProducts();
   const { userEmail } = useAuth();
+
+  useEffect(() => {
+    sessionStorage.setItem("zenbill_currentView", currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (invoiceToEdit) {
+      sessionStorage.setItem("zenbill_invoiceToEdit", JSON.stringify(invoiceToEdit));
+    } else {
+      sessionStorage.removeItem("zenbill_invoiceToEdit");
+    }
+  }, [invoiceToEdit]);
+
+  useEffect(() => {
+    if (invoiceIdForDetails !== null) {
+      sessionStorage.setItem("zenbill_invoiceIdForDetails", String(invoiceIdForDetails));
+    } else {
+      sessionStorage.removeItem("zenbill_invoiceIdForDetails");
+    }
+  }, [invoiceIdForDetails]);
+
+  useEffect(() => {
+    if (clientIdForDetails !== null) {
+      sessionStorage.setItem("zenbill_clientIdForDetails", clientIdForDetails);
+    } else {
+      sessionStorage.removeItem("zenbill_clientIdForDetails");
+    }
+  }, [clientIdForDetails]);
 
   const handleSetView = useCallback((view: View) => {
     setCurrentView(view);
@@ -77,7 +119,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case "dashboard":
-        return <Dashboard invoices={invoices} setView={handleSetView} />;
+        return <Dashboard setView={handleSetView} />;
       case "invoices":
         return (
           <InvoiceList
@@ -168,7 +210,7 @@ const App: React.FC = () => {
             invoices={invoices}
             products={products}
             setView={handleSetView}
-            updateClient={updateClient} // PASSED UPDATE CLIENT HERE
+            updateClient={updateClient}
           />
         ) : (
           <ClientManager
@@ -197,6 +239,8 @@ const App: React.FC = () => {
         );
       case "settings":
         return <Profile profile={profile} updateProfile={updateProfile} />;
+      case "account": 
+        return <AccountSettings userEmail={userEmail} />;
       case "login":
         return <Login setView={handleSetView} />;
       case "signup":
@@ -251,7 +295,7 @@ const App: React.FC = () => {
       }
 
       default:
-        return <Dashboard invoices={invoices} setView={handleSetView} />;
+        return <Dashboard setView={handleSetView} />;
     }
   };
 

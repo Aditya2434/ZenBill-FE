@@ -4,14 +4,14 @@ import { View } from "../App";
 import { PlusIcon, DownloadIcon, TrashIcon } from "./icons";
 import DummyPDF from "./DummyPDF";
 import { pdf } from "@react-pdf/renderer";
+import { Toast, ToastType } from "./Toast";
 import {
   apiListInvoices,
   apiGetInvoiceDetails,
   apiListBankDetails,
+  apiMarkInvoicePaid,
   BASE_URL,
 } from "../utils/api";
-
-// html2canvas/jsPDF removed in favor of @react-pdf/renderer
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -22,22 +22,6 @@ interface InvoiceListProps {
   onViewDetails?: (invoiceId: string | number) => void;
 }
 
-const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
-  const baseClasses =
-    "px-2.5 py-0.5 text-xs font-medium rounded-full inline-flex items-center";
-  const statusClasses = {
-    [InvoiceStatus.Paid]: "bg-green-100 text-green-800",
-    [InvoiceStatus.Unpaid]: "bg-yellow-100 text-yellow-800",
-    [InvoiceStatus.Overdue]: "bg-red-100 text-red-800",
-    [InvoiceStatus.Draft]: "bg-gray-100 text-gray-800",
-  };
-
-  return (
-    <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>
-  );
-};
-
-// FIX: Added a helper function to calculate all invoice totals needed by InvoicePreview.
 const calculateInvoiceTotals = (invoice: Invoice) => {
   const subtotal = invoice.items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -67,10 +51,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       billedToName: string;
       totalAmountAfterTax: number;
       pdfUrl?: string;
+      status: string;
     }>
   >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({ message: "", type: "success", isVisible: false });
+  const [payConfirmModal, setPayConfirmModal] = useState<{ open: boolean; invoiceId: string | number | null }>({ open: false, invoiceId: null });
+
+  const showToast = (message: string, type: ToastType) => setToast({ message, type, isVisible: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +80,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           billedToName: String(it.billedToName || ""),
           totalAmountAfterTax: Number(it.totalAmountAfterTax || 0),
           pdfUrl: it.pdfUrl,
+          status: it.status || "Unpaid", 
         }));
         if (!cancelled) setRows(mapped);
       } catch (e: any) {
@@ -115,12 +105,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       onEdit(match);
       return;
     }
-    // Fallback: fetch details from backend and map to local Invoice shape
     try {
       const body = await apiGetInvoiceDetails(row.id);
       const d: any = (body && (body as any).data) || body;
       if (!d) return;
-      // Fetch bank details to get the branch information
       let bankBranch = "";
       try {
         const bankDetailsResponse = await apiListBankDetails();
@@ -130,7 +118,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           ? (bankDetailsResponse as any).data
           : [];
 
-        // Find matching bank detail by account number and bank name
         const matchingBank = bankDetailsList.find(
           (bd: any) =>
             (bd.accountName === d.selectedAccountName ||
@@ -217,27 +204,24 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     billedToName: string;
     pdfUrl?: string;
   }) => {
-    // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
     const invoiceNum = row.invoiceNumber.replace(/\//g, "-");
     const date = new Date(row.invoiceDate || Date.now());
     const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
     const billedToName = (row.billedToName || "")
-      .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
-      .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+      .replace(/[^a-zA-Z0-9]/g, "-") 
+      .replace(/-+/g, "-") 
+      .replace(/^-|-$/g, ""); 
     const fileName = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
 
-    // If PDF URL exists in Supabase, download it directly
     if (row.pdfUrl) {
       try {
-        // Ensure URL is absolute
         let absoluteUrl = row.pdfUrl;
         if (row.pdfUrl.startsWith("/api/")) {
           absoluteUrl = BASE_URL + row.pdfUrl;
         }
 
         const response = await fetch(absoluteUrl, {
-          credentials: "include", // Include cookies for authentication
+          credentials: "include", 
         });
         if (!response.ok) {
           throw new Error("Failed to fetch PDF");
@@ -251,7 +235,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
         URL.revokeObjectURL(url);
       } catch (error) {
         console.error("Error downloading PDF from Supabase:", error);
-        // Fallback to generating PDF if download fails
         const match = invoices.find(
           (inv) => inv.invoiceNumber === row.invoiceNumber
         );
@@ -261,7 +244,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       }
       return;
     }
-    // Fallback: generate PDF if no stored URL
     const match = invoices.find(
       (inv) => inv.invoiceNumber === row.invoiceNumber
     );
@@ -269,10 +251,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       handleDownload(match);
     }
   };
+
   const handleDownload = async (invoice: Invoice) => {
     try {
-      const { subtotal, cgstAmount, sgstAmount, igstAmount, totalTax, total } =
-        calculateInvoiceTotals(invoice);
+      const { subtotal, cgstAmount, sgstAmount, igstAmount, totalTax, total } = calculateInvoiceTotals(invoice);
       const blob = await pdf(
         <DummyPDF invoice={invoice} profile={profile} />
       ).toBlob();
@@ -280,14 +262,13 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       const link = document.createElement("a");
       link.href = url;
       
-      // Format filename: InvoiceNumber-DD-MM-YYYY-BilledToName.pdf
       const invoiceNum = invoice.invoiceNumber.replace(/\//g, "-");
       const date = new Date(invoice.issueDate || Date.now());
       const dateStr = `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
       const billedToName = (invoice.client?.name || "")
-        .replace(/[^a-zA-Z0-9]/g, "-") // Replace special chars with hyphen
-        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
-        .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+        .replace(/[^a-zA-Z0-9]/g, "-") 
+        .replace(/-+/g, "-") 
+        .replace(/^-|-$/g, ""); 
       
       link.download = `${invoiceNum}-${dateStr}-${billedToName}.pdf`;
       link.click();
@@ -297,8 +278,27 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     }
   };
 
+  const confirmMarkPaid = async () => {
+    if (!payConfirmModal.invoiceId) return;
+    try {
+      const res = await apiMarkInvoicePaid(payConfirmModal.invoiceId);
+      if (res && res.status) {
+        setRows(rows.map(r => 
+          r.id === payConfirmModal.invoiceId ? { ...r, status: 'Paid' } : r
+        ));
+        showToast("Payment recorded successfully!", "success");
+      }
+    } catch (e: any) {
+      showToast(e.message || "Failed to record payment.", "error");
+    } finally {
+      setPayConfirmModal({ open: false, invoiceId: null });
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={() => setToast({ ...toast, isVisible: false })} duration={3000} />
+
       <div className="p-6 border-b border-gray-200 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Invoices</h2>
@@ -335,7 +335,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               <th scope="col" className="px-6 py-3">
                 Amount
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-6 py-3 text-center">
                 Status
               </th>
               <th scope="col" className="px-6 py-3 text-right">
@@ -377,9 +377,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               </tr>
             )}
             {!isLoading && rows.map((r) => {
-              // Find matching local invoice for status (fallback to Draft if not found)
-              const localInvoice = invoices.find(inv => inv.invoiceNumber === r.invoiceNumber);
-              const status = localInvoice?.status ?? InvoiceStatus.Draft;
+              const isPaid = r.status === "Paid";
               return (
                 <tr key={r.id} className="bg-white border-b hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">
@@ -390,8 +388,21 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                   <td className="px-6 py-4 font-medium text-gray-800">
                     ₹{r.totalAmountAfterTax.toLocaleString("en-IN")}
                   </td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={status} />
+                  <td className="px-6 py-4 text-center">
+                     {isPaid ? (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                           <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                           Paid
+                        </span>
+                     ) : (
+                        <button 
+                          onClick={() => setPayConfirmModal({ open: true, invoiceId: r.id })} 
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300 transition-all shadow-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                          title="Click to mark this invoice as paid"
+                        >
+                          Mark as Paid
+                        </button>
+                     )}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button
@@ -422,7 +433,41 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           </tbody>
         </table>
       </div>
-      {/* Off-screen preview removed; react-pdf renders directly to Blob */}
+
+      {/* --- CONFIRM PAYMENT MODAL --- */}
+      {payConfirmModal.open && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 transition-opacity">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-100 transform transition-all">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-emerald-100 rounded-full mb-4">
+               <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center">
+              Confirm Payment
+            </h3>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              Are you sure you want to mark this invoice as paid? This action will update your revenue records.
+            </p>
+            <div className="mt-6 flex justify-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setPayConfirmModal({ open: false, invoiceId: null })}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMarkPaid}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-xl hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
+              >
+                Confirm Paid
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

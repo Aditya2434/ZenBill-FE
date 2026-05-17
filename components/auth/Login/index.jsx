@@ -16,181 +16,205 @@ const Login = ({ setView }) => {
     setRememberMe,
     toggleShowPassword,
     handleSubmit,
-    handleOAuth,
   } = useLoginData();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-sm p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-              Welcome back
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Sign in to your account
-            </p>
+    <div className="min-h-screen w-full flex bg-white font-sans">
+      
+      {/* ─── LEFT PANEL (Form) ─── */}
+      <div className="flex-1 flex flex-col justify-center relative px-6 sm:px-12 lg:px-20 xl:px-32">
+        
+        {/* Subtle ambient light matching dashboard theme */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-50 blur-[120px] pointer-events-none" />
+
+        <div className="w-full max-w-[420px] mx-auto relative z-10 animate-fade-in-up">
+          
+          {/* Brand/Logo Header */}
+          <div className="flex items-center gap-3 mb-10">
+            <img 
+              src="/favicon.ico" 
+              alt="ZenBill Logo" 
+              className="w-10 h-10 object-contain drop-shadow-md rounded-xl"
+              onError={(e) => {
+                // Fallback if favicon isn't exactly named favicon.ico at root
+                e.target.style.display = 'none';
+              }} 
+            />
+            <span className="text-2xl font-extrabold tracking-tight text-slate-900">
+              ZenBill.
+            </span>
           </div>
 
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">
+            Log in to your account
+          </h2>
+          <p className="text-slate-500 text-sm font-medium mb-8">
+            Welcome back! Please enter your details to access your dashboard.
+          </p>
+
+          {/* Error Banner */}
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
-              {error}
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-red-700 font-medium leading-relaxed">{error}</p>
             </div>
           )}
 
+          {/* Form */}
           <form
-            className="space-y-4"
+            className="space-y-6"
             onSubmit={async (e) => {
               e.preventDefault();
               const ok = await handleSubmit();
               if (ok) navigate("/");
             }}
           >
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+            {/* Email Field */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-bold text-slate-700">
+                Email Address
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-1 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
-                placeholder="you@company.com"
+                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-900 placeholder:text-slate-400 font-medium hover:border-slate-300"
+                placeholder="name@company.com"
                 autoComplete="email"
                 disabled={isLoading}
                 required
               />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-bold text-slate-700">
                   Password
                 </label>
-                <button
-                  type="button"
-                  onClick={toggleShowPassword}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                  disabled={isLoading}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
               </div>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-1 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-900 placeholder:text-slate-400 font-medium hover:border-slate-300"
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={isLoading}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={toggleShowPassword}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                  disabled={isLoading}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="inline-flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-                Remember me
+            {/* Options */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2.5 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-indigo-600 checked:border-indigo-600 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={isLoading}
+                  />
+                  <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                  Remember for 30 days
+                </span>
               </label>
               <button
                 type="button"
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors focus:outline-none"
                 disabled={isLoading}
               >
                 Forgot password?
               </button>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={!isValid || isLoading}
-              className={`w-full inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${
+              className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-4 text-sm font-bold text-white transition-all duration-200 mt-2 ${
                 isValid && !isLoading
-                  ? "bg-blue-600 hover:bg-blue-700"
-                  : "bg-blue-400 cursor-not-allowed"
+                  ? "bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/25 hover:-translate-y-0.5"
+                  : "bg-slate-300 cursor-not-allowed"
               }`}
             >
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Signing in...
+                </>
+              ) : (
+                "Sign in"
+              )}
             </button>
           </form>
 
-          <div className="my-6 flex items-center">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="px-3 text-xs text-gray-500">or</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
+          {/* Footer */}
+          <p className="mt-8 text-center text-sm font-medium text-slate-500">
+            Don't have an account?{" "}
             <button
-              onClick={() => handleOAuth("google")}
-              disabled={isLoading}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                className="h-4 w-4"
-                aria-hidden
-              >
-                <path
-                  fill="#FFC107"
-                  d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C33.046,6.053,28.723,4,24,4C12.954,4,4,12.954,4,24 s8.954,20,20,20s20-8.954,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-                />
-                <path
-                  fill="#FF3D00"
-                  d="M6.306,14.691l6.571,4.819C14.655,16.108,19.008,13,24,13c3.059,0,5.842,1.154,7.961,3.039 l5.657-5.657C33.046,6.053,28.723,4,24,4C16.318,4,9.758,8.337,6.306,14.691z"
-                />
-                <path
-                  fill="#4CAF50"
-                  d="M24,44c5.166,0,9.86-1.977,13.409-5.191l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.616-3.317-11.278-7.95l-6.522,5.025C9.67,39.556,16.302,44,24,44z"
-                />
-                <path
-                  fill="#1976D2"
-                  d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.094,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.896,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
-                />
-              </svg>
-              Continue with Google
-            </button>
-            <button
-              onClick={() => handleOAuth("github")}
-              disabled={isLoading}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                className="h-4 w-4"
-                aria-hidden
-              >
-                <path d="M8 0C3.58 0 0 3.58 0 8a8.01 8.01 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.74.54 1.5 0 1.08-.01 1.95-.01 2.22 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
-              </svg>
-              Continue with GitHub
-            </button>
-          </div>
-
-          <p className="mt-6 text-sm text-gray-600 text-center">
-            Don’t have an account?{" "}
-            <button
-              type="button"
               onClick={() => navigate("/signup")}
-              className="font-medium text-gray-800 hover:text-gray-900"
+              className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors ml-1 focus:outline-none"
               disabled={isLoading}
             >
-              Sign up
+              Sign up for free
             </button>
           </p>
         </div>
       </div>
+
+      {/* ─── RIGHT PANEL (Visual/Premium Branding) ─── */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-slate-900 flex-col items-center justify-center p-12">
+        
+        {/* Dynamic Abstract Gradients */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-[#0B0F19] to-slate-900 z-0"></div>
+        <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-blue-500/20 rounded-full blur-[120px] mix-blend-screen z-0"></div>
+        <div className="absolute bottom-[-10%] left-[-20%] w-[60%] h-[60%] bg-indigo-500/20 rounded-full blur-[120px] mix-blend-screen z-0"></div>
+        
+        {/* Elegant Abstract Branding */}
+        <div className="relative z-10 w-full max-w-lg text-center flex flex-col items-center">
+          
+          <div className="w-24 h-24 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex items-center justify-center mb-8 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+            <svg className="w-12 h-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+
+          <h3 className="text-4xl font-extrabold text-white tracking-tight leading-tight mb-6">
+            Streamline your billing <br/> with absolute precision.
+          </h3>
+          <p className="text-lg text-indigo-100/70 font-medium leading-relaxed max-w-md mx-auto">
+            ZenBill provides a seamless, secure, and automated experience for generating professional invoices and managing your company's workflow.
+          </p>
+
+        </div>
+
+        {/* Abstract floating rings */}
+        <div className="absolute top-[15%] right-[5%] w-64 h-64 border border-white/5 rounded-full z-0 pointer-events-none" />
+        <div className="absolute bottom-[10%] left-[5%] w-80 h-80 border border-indigo-500/10 rounded-full z-0 pointer-events-none" />
+      </div>
+
     </div>
   );
 };
