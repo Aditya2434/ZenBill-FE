@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { InvoiceStatus } from '../types';
 import { View } from '../App';
-import { PlusIcon } from './icons';
+import { PlusIcon, QuotationIcon } from './icons';
 import { apiListInvoices } from '../utils/api';
 
 interface DashboardProps {
@@ -75,7 +75,6 @@ const StatCard: React.FC<StatCardProps> = ({
     className={`relative overflow-hidden rounded-2xl p-6 text-white ${gradient}`}
     style={{ boxShadow: `0 8px 32px -8px ${glowColor}` }}
   >
-    {/* Decorative blurred circle */}
     <div
       className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-20"
       style={{ background: 'rgba(255,255,255,0.35)', filter: 'blur(2px)' }}
@@ -168,6 +167,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     .filter(inv => inv.status === 'Paid')
     .reduce((sum, inv) => sum + (Number(inv.totalAmountAfterTax) || 0), 0);
 
+  const totalPendingAmount = realInvoices
+    .filter(inv => (inv.status || 'Unpaid') === 'Unpaid' || inv.status === 'Overdue')
+    .reduce((sum, inv) => sum + (Number(inv.totalAmountAfterTax) || 0), 0);
+
+  const totalMonetaryValue = totalRevenue + totalPendingAmount;
+
   const currentYear = new Date().getFullYear();
   const monthlyRevenue: Record<number, number> = {};
   realInvoices.forEach(inv => {
@@ -183,11 +188,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     revenue: monthlyRevenue[idx] || 0,
   }));
 
+  // Data for Invoice Status (Count)
   const statusCounts = Object.values(InvoiceStatus).map(status => ({
     name: status,
     value: realInvoices.filter(inv => (inv.status || 'Unpaid') === status).length,
     color: STATUS_PIE_COLORS[status],
   })).filter(s => s.value > 0);
+
+  // Data for Revenue Breakdown (Amount) - Using high-contrast distinct colors
+  const amountCounts = [
+    { name: 'Paid', value: totalRevenue, color: '#3B82F6' },    // Vibrant Blue
+    { name: 'Pending', value: totalPendingAmount, color: '#F97316' } // Bright Orange
+  ].filter(s => s.value > 0);
 
   const recent = [...realInvoices]
     .sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())
@@ -220,6 +232,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           <h2 className="text-2xl font-bold text-gray-800 mt-0.5">Business Dashboard</h2>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('create-quotation')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl shadow-sm transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-95"
+          >
+            <QuotationIcon className="w-4 h-4 text-gray-500" />
+            Create Quotation
+          </button>
           <button
             onClick={() => setView('create-invoice')}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105 active:scale-95"
@@ -271,10 +290,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       </div>
 
       {/* ── Charts Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-        {/* Area Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        {/* Area Chart - Spans 2 columns on lg and md screens */}
+        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-bold text-gray-800 text-base">Revenue Overview</h3>
@@ -323,11 +342,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           </div>
         </div>
 
-        {/* Status Pie */}
+        {/* Status Pie (Count) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
           <div className="mb-4">
-            <h3 className="font-bold text-gray-800 text-base">Invoice Status</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Breakdown by status</p>
+            <h3 className="font-bold text-gray-800 text-base">Invoice Volume</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Breakdown by status count</p>
           </div>
           {statusCounts.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
@@ -353,7 +372,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                       ))}
                     </Pie>
                     <Tooltip
-                      // Changed to use generic 'any' types to bypass Recharts strict typing issues
                       formatter={(value: any, name: any) => [value, name]}
                       contentStyle={{ borderRadius: '10px', fontSize: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
                     />
@@ -379,6 +397,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             </>
           )}
         </div>
+
+        {/* Revenue Pie (Amount) */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+          <div className="mb-4">
+            <h3 className="font-bold text-gray-800 text-base">Revenue Breakdown</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Paid vs Pending amounts</p>
+          </div>
+          {amountCounts.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
+              <CurrencyIcon className="w-10 h-10 opacity-30" />
+              <p className="text-sm">No revenue yet</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ width: '100%', height: 160 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={amountCounts}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {amountCounts.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any, name: any) => [indianCurrencyFormatter(Number(value)), name]}
+                      contentStyle={{ borderRadius: '10px', fontSize: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 space-y-2.5">
+                {amountCounts.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                      <span className="text-xs text-gray-600 font-medium">{s.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-800">{indianCurrencyFormatter(s.value)}</span>
+                      <span className="text-[10px] text-gray-400">
+                        ({totalMonetaryValue > 0 ? Math.round((s.value / totalMonetaryValue) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
       </div>
 
       {/* ── Bottom Row ── */}
