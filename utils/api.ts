@@ -98,6 +98,10 @@ export function apiLogout() {
   return request("/api/v1/auth/logout", { method: "POST" });
 }
 
+export function apiChangePassword(payload: { oldPassword: string; newPassword: string }) {
+  return request("/api/v1/auth/change-password", { method: "PUT", json: payload });
+}
+
 // Invoices API
 export function apiCreateInvoice(payload: any) {
   return request("/api/v1/invoices", { method: "POST", json: payload });
@@ -385,4 +389,10 @@ export function apiDeleteOrder(orderId: string | number) {
 
 export function apiGetClientInvoices(clientId: string | number) {
   return request(`/api/v1/invoices/client/${encodeURIComponent(String(clientId))}`);
+}
+
+export function apiMarkInvoicePaid(invoiceId: string | number) {
+  return request(`/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/pay`, {
+    method: "PATCH",
+  });
 }

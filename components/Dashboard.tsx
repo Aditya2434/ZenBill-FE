@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,12 +11,12 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Invoice, InvoiceStatus } from '../types';
+import { InvoiceStatus } from '../types';
 import { View } from '../App';
-import { PlusIcon, DocumentIcon } from './icons';
+import { PlusIcon } from './icons';
+import { apiListInvoices } from '../utils/api';
 
 interface DashboardProps {
-  invoices: Invoice[];
   setView: (view: View) => void;
 }
 
@@ -63,8 +63,8 @@ interface StatCardProps {
   value: string;
   sub?: string;
   icon: React.ReactNode;
-  gradient: string;       // Tailwind gradient classes
-  glowColor: string;      // box-shadow inline style color
+  gradient: string;       
+  glowColor: string;      
   trend?: string;
 }
 
@@ -107,15 +107,15 @@ const StatCard: React.FC<StatCardProps> = ({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const indianCurrencyFormatter = (value: number) => {
-  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
-  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
+  if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
   if (value >= 1000) return `₹${(value / 1000).toFixed(0)}k`;
   return `₹${value}`;
 };
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const STATUS_PIE_COLORS: Record<InvoiceStatus, string> = {
+const STATUS_PIE_COLORS: Record<string, string> = {
   [InvoiceStatus.Paid]:    '#10b981',
   [InvoiceStatus.Unpaid]:  '#f59e0b',
   [InvoiceStatus.Overdue]: '#ef4444',
@@ -135,32 +135,47 @@ const AreaTooltip = ({ active, payload, label }: any) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
-  const totalInvoices = invoices.length;
-  const pendingPayments = invoices.filter(
-    inv => inv.status === InvoiceStatus.Unpaid || inv.status === InvoiceStatus.Overdue
+export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
+  const [realInvoices, setRealInvoices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setIsLoading(true);
+        const body = await apiListInvoices();
+        const list = Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : [];
+        if (!cancelled) setRealInvoices(list);
+      } catch (e) {
+        console.error("Dashboard failed to fetch invoices", e);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const totalInvoices = realInvoices.length;
+  
+  const pendingPayments = realInvoices.filter(
+    inv => (inv.status || 'Unpaid') === 'Unpaid' || inv.status === 'Overdue'
   ).length;
-  const paidInvoices = invoices.filter(inv => inv.status === InvoiceStatus.Paid).length;
+  
+  const paidInvoices = realInvoices.filter(inv => inv.status === 'Paid').length;
 
-  const totalRevenue = invoices
-    .filter(inv => inv.status === InvoiceStatus.Paid)
-    .reduce((sum, inv) => {
-      const subtotal = inv.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-      const tax = subtotal * (((inv.cgstRate || 0) + (inv.sgstRate || 0) + (inv.igstRate || 0)) / 100);
-      return sum + subtotal + tax;
-    }, 0);
+  const totalRevenue = realInvoices
+    .filter(inv => inv.status === 'Paid')
+    .reduce((sum, inv) => sum + (Number(inv.totalAmountAfterTax) || 0), 0);
 
-  // Real monthly revenue
   const currentYear = new Date().getFullYear();
   const monthlyRevenue: Record<number, number> = {};
-  invoices.forEach(inv => {
-    if (!inv.issueDate) return;
-    const date = new Date(inv.issueDate);
+  realInvoices.forEach(inv => {
+    if (!inv.invoiceDate) return;
+    const date = new Date(inv.invoiceDate);
     if (isNaN(date.getTime()) || date.getFullYear() !== currentYear) return;
     const month = date.getMonth();
-    const subtotal = inv.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-    const tax = subtotal * (((inv.cgstRate || 0) + (inv.sgstRate || 0) + (inv.igstRate || 0)) / 100);
-    monthlyRevenue[month] = (monthlyRevenue[month] || 0) + subtotal + tax;
+    monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (Number(inv.totalAmountAfterTax) || 0);
   });
 
   const chartData = MONTH_NAMES.map((name, idx) => ({
@@ -168,22 +183,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
     revenue: monthlyRevenue[idx] || 0,
   }));
 
-  // Status breakdown for pie chart
   const statusCounts = Object.values(InvoiceStatus).map(status => ({
     name: status,
-    value: invoices.filter(inv => inv.status === status).length,
+    value: realInvoices.filter(inv => (inv.status || 'Unpaid') === status).length,
     color: STATUS_PIE_COLORS[status],
   })).filter(s => s.value > 0);
 
-  // Recent invoices (last 5 from backend list — use local invoices array)
-  const recent = [...invoices]
-    .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
+  const recent = [...realInvoices]
+    .sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())
     .slice(0, 5);
 
   const today = new Date();
   const greeting =
     today.getHours() < 12 ? 'Good Morning' :
     today.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[70vh] text-gray-400">
+        <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <span className="ml-4 font-semibold text-lg text-gray-600">Loading Dashboard...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-7">
@@ -211,7 +236,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
         <StatCard
           title="Total Revenue"
           value={`₹${totalRevenue >= 100000
-            ? `${(totalRevenue / 100000).toFixed(1)}L`
+            ? `${(totalRevenue / 100000).toFixed(2)}L`
             : totalRevenue.toLocaleString('en-IN')}`}
           sub="From paid invoices"
           icon={<CurrencyIcon className="w-6 h-6 text-white" />}
@@ -253,7 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-bold text-gray-800 text-base">Revenue Overview</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{currentYear} — monthly breakdown</p>
+              <p className="text-xs text-gray-400 mt-0.5">{currentYear} — monthly breakdown (Billed)</p>
             </div>
             <span className="text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">
               {currentYear}
@@ -328,7 +353,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number, name: string) => [value, name]}
+                      // Changed to use generic 'any' types to bypass Recharts strict typing issues
+                      formatter={(value: any, name: any) => [value, name]}
                       contentStyle={{ borderRadius: '10px', fontSize: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
                     />
                   </PieChart>
@@ -377,15 +403,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
           ) : (
             <div className="divide-y divide-gray-50">
               {recent.map((inv, i) => {
-                const subtotal = inv.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-                const tax = subtotal * (((inv.cgstRate || 0) + (inv.sgstRate || 0) + (inv.igstRate || 0)) / 100);
-                const total = subtotal + tax;
-                const statusStyles: Record<InvoiceStatus, string> = {
-                  [InvoiceStatus.Paid]:    'bg-emerald-100 text-emerald-700',
-                  [InvoiceStatus.Unpaid]:  'bg-amber-100 text-amber-700',
-                  [InvoiceStatus.Overdue]: 'bg-red-100 text-red-700',
-                  [InvoiceStatus.Draft]:   'bg-gray-100 text-gray-600',
+                const statusStyles: Record<string, string> = {
+                  'Paid':    'bg-emerald-100 text-emerald-700',
+                  'Unpaid':  'bg-amber-100 text-amber-700',
+                  'Overdue': 'bg-red-100 text-red-700',
+                  'Draft':   'bg-gray-100 text-gray-600',
                 };
+                const currentStatus = inv.status || 'Unpaid';
                 return (
                   <div key={i} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3">
@@ -393,17 +417,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ invoices, setView }) => {
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                         style={{ background: `hsl(${(i * 60 + 200) % 360}, 70%, 55%)` }}
                       >
-                        {inv.client?.name?.charAt(0)?.toUpperCase() || '#'}
+                        {inv.billedToName?.charAt(0)?.toUpperCase() || '#'}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-800 leading-tight">{inv.client?.name || '—'}</p>
-                        <p className="text-xs text-gray-400">{inv.invoiceNumber} · {inv.issueDate}</p>
+                        <p className="text-sm font-semibold text-gray-800 leading-tight">{inv.billedToName || '—'}</p>
+                        <p className="text-xs text-gray-400">{inv.invoiceNumber} · {inv.invoiceDate}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-gray-800">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusStyles[inv.status]}`}>
-                        {inv.status}
+                      <p className="text-sm font-bold text-gray-800">₹{(Number(inv.totalAmountAfterTax) || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusStyles[currentStatus] || statusStyles['Draft']}`}>
+                        {currentStatus}
                       </span>
                     </div>
                   </div>

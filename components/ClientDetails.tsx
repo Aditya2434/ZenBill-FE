@@ -3,7 +3,7 @@ import { Client, Product } from "../types";
 import { View } from "../App";
 import { DataTable } from "./DataTable";
 import { Toast, ToastType } from "./Toast";
-import { apiGetClientOrders, apiCreateOrder, apiGetClientInvoices, apiDeleteOrder, apiUpdateOrder } from "../utils/api";
+import { apiGetClientOrders, apiCreateOrder, apiGetClientInvoices, apiDeleteOrder, apiUpdateOrder, apiMarkInvoicePaid } from "../utils/api";
 
 interface ClientDetailsProps {
   clientId: string;
@@ -58,6 +58,9 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItemForm[]>([]);
   const [deleteOrderConfirm, setDeleteOrderConfirm] = useState<{ open: boolean; id?: number }>({ open: false });
   
+  // Payment Confirm Modal State
+  const [payConfirmModal, setPayConfirmModal] = useState<{ open: boolean; invoiceId: string | number | null }>({ open: false, invoiceId: null });
+
   // Real Backend State
   const [backendOrders, setBackendOrders] = useState<BackendOrder[]>([]);
   const [backendInvoices, setBackendInvoices] = useState<any[]>([]);
@@ -103,17 +106,53 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     );
   }
 
-  // --- Calculations ---
+  // --- Calculations & Balances ---
   const totalBilled = backendInvoices.reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0);
-  const totalPaid = 0; 
+  const totalPaid = backendInvoices.filter(inv => inv.status === 'Paid').reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0); 
   const totalDue = totalBilled - totalPaid;
 
   let totalOrderedQty = 0;
-  backendOrders.forEach(order => order.items.forEach(item => totalOrderedQty += item.quantity));
   let totalSoldQty = 0; 
+
+  const productBalances: Record<string, { ordered: number; billed: number; uom: string }> = {};
+
+  backendOrders.forEach(order => {
+    order.items.forEach(item => {
+      totalOrderedQty += item.quantity;
+      if (!productBalances[item.productName]) {
+        productBalances[item.productName] = { ordered: 0, billed: 0, uom: item.uom || '' };
+      }
+      productBalances[item.productName].ordered += item.quantity;
+    });
+  });
+
+  backendInvoices.forEach(inv => {
+    if (Array.isArray(inv.items)) {
+      inv.items.forEach((item: any) => {
+        const qty = Number(item.quantity) || 0;
+        totalSoldQty += qty;
+        const name = item.description || item.productName;
+        if (name) {
+          if (!productBalances[name]) {
+            productBalances[name] = { ordered: 0, billed: 0, uom: item.uom || '' };
+          }
+          productBalances[name].billed += qty;
+        }
+      });
+    }
+  });
+
   const ordersLeftQty = Math.max(0, totalOrderedQty - totalSoldQty);
 
-  // --- Logic for Disabling "Save Changes" Buttons ---
+  const balanceArray = Object.entries(productBalances).map(([name, data]) => ({
+    name,
+    ordered: data.ordered,
+    billed: data.billed,
+    uom: data.uom,
+    balance: data.ordered - data.billed
+  }));
+
+
   const isClientUnchanged = Boolean(
     clientFormData &&
     client &&
@@ -135,7 +174,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     }
   }
 
-  // --- Client Edit Handlers ---
+  // --- Handlers ---
   const handleClientFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (clientFormData) setClientFormData({ ...clientFormData, [e.target.name]: e.target.value });
   };
@@ -152,8 +191,6 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     }
   };
 
-
-  // --- Order Modal Handlers ---
   const handleAddItemToOrder = () => {
     if (!selectedProductId || !orderQuantity || orderQuantity <= 0) return;
     const product = products.find(p => p.id === selectedProductId);
@@ -248,31 +285,68 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     }
   };
 
+  // --- NEW MARK AS PAID HANDLER (WITH CONFIRMATION) ---
+  const confirmMarkPaid = async () => {
+    if (!payConfirmModal.invoiceId) return;
+    try {
+      const res = await apiMarkInvoicePaid(payConfirmModal.invoiceId);
+      if (res && res.status) {
+        setBackendInvoices(backendInvoices.map(inv => 
+          inv.id === payConfirmModal.invoiceId ? { ...inv, status: 'Paid' } : inv
+        ));
+        showToast("Payment recorded successfully!", "success");
+      }
+    } catch (e: any) {
+      showToast(e.message || "Failed to record payment.", "error");
+    } finally {
+      setPayConfirmModal({ open: false, invoiceId: null });
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={() => setToast({ ...toast, isVisible: false })} duration={3000} />
 
       {/* --- HEADER --- */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-blue-900 to-indigo-900 p-8 rounded-2xl shadow-lg text-white">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => setView("clients")} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Back to Directory">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          </button>
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{client.name}</h1>
-            <div className="flex items-center space-x-3 mt-2">
-              <span className="inline-flex items-center rounded-md bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white border border-white/20 backdrop-blur-sm">GSTIN: {client.gstin || "N/A"}</span>
-              <span className="inline-flex items-center rounded-md bg-blue-400/20 px-2.5 py-0.5 text-xs font-semibold text-blue-100 border border-blue-400/20 backdrop-blur-sm">{client.state}</span>
+      <div className="relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-2xl shadow-xl text-white border border-white/10">
+        <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-16 -ml-16 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-5 z-10 w-full md:w-auto">
+          <div className="flex items-center">
+             <button onClick={() => setView("clients")} className="mr-4 p-2.5 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 backdrop-blur-sm" title="Back to Directory">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            </button>
+            <div className="hidden sm:flex h-14 w-14 min-w-[56px] rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-400 items-center justify-center shadow-inner border border-white/20 text-xl font-black text-white">
+              {client.name.charAt(0).toUpperCase()}
+            </div>
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug break-words">
+              {client.name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              <span className="inline-flex items-center rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 border border-white/10 backdrop-blur-md shadow-sm">
+                 <svg className="w-3.5 h-3.5 mr-1.5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                 GSTIN: <span className="ml-1 font-mono">{client.gstin || "N/A"}</span>
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-100 border border-indigo-400/20 backdrop-blur-md shadow-sm">
+                <svg className="w-3.5 h-3.5 mr-1.5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                {client.state}
+              </span>
             </div>
           </div>
         </div>
-        <button 
-          onClick={() => setIsEditClientModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 bg-white text-indigo-900 text-sm font-bold rounded-xl hover:bg-gray-100 shadow-sm transition-colors"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          Edit Profile
-        </button>
+        <div className="relative z-10 sm:self-center">
+           <button 
+             onClick={() => setIsEditClientModalOpen(true)}
+             className="w-full sm:w-auto inline-flex justify-center items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl border border-white/20 shadow-sm backdrop-blur-md transition-all group shrink-0 whitespace-nowrap"
+           >
+             <svg className="w-4 h-4 mr-2 text-white/70 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+             Edit Profile
+           </button>
+        </div>
       </div>
 
       {/* --- QUICK STATS --- */}
@@ -317,56 +391,123 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
         <div className="p-8">
           {/* OVERVIEW TAB */}
           {activeTab === "overview" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
-                   <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                   Company Details
-                </h3>
-                <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-100 space-y-4">
-                  <div>
-                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Registered Address</span>
-                    <p className="text-sm text-gray-900 whitespace-pre-line font-medium leading-relaxed">{client.address}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200/60">
+            <div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
+                     <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                     Company Details
+                  </h3>
+                  <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-100 space-y-4">
                     <div>
-                      <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">State</span>
-                      <p className="text-sm text-gray-900 font-medium">{client.state}</p>
+                      <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Registered Address</span>
+                      <p className="text-sm text-gray-900 whitespace-pre-line font-medium leading-relaxed">{client.address}</p>
                     </div>
-                    <div>
-                      <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">State Code</span>
-                      <p className="text-sm text-gray-900 font-medium">{client.stateCode}</p>
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200/60">
+                      <div>
+                        <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">State</span>
+                        <p className="text-sm text-gray-900 font-medium">{client.state}</p>
+                      </div>
+                      <div>
+                        <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">State Code</span>
+                        <p className="text-sm text-gray-900 font-medium">{client.stateCode}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
+                     <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                     Total Requirement Analytics
+                  </h3>
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-inner">
+                    <div className="space-y-5">
+                      <div className="flex justify-between items-center pb-3 border-b border-blue-200/50">
+                        <span className="text-sm font-semibold text-blue-900">Total Units Ordered</span> 
+                        <span className="text-xl font-bold text-blue-900">{isLoadingData ? "..." : totalOrderedQty}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-3 border-b border-blue-200/50">
+                        <span className="text-sm font-semibold text-blue-900">Total Units Billed</span> 
+                        <span className="text-xl font-bold text-emerald-700">{totalSoldQty}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2">
+                        <span className="text-sm font-bold text-blue-950">Pending Fulfillment</span> 
+                        <span className="text-2xl font-black text-rose-600">{isLoadingData ? "..." : ordersLeftQty}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div>
+              {/* PRODUCT BALANCES TABLE */}
+              <div className="mt-10">
                 <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
-                   <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                   Requirement Analytics
+                   <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                   Product Fulfillment & Balances
                 </h3>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-inner">
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center pb-3 border-b border-blue-200/50">
-                      <span className="text-sm font-semibold text-blue-900">Total Units Ordered</span> 
-                      <span className="text-xl font-bold text-blue-900">{isLoadingData ? "..." : totalOrderedQty}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-blue-200/50">
-                      <span className="text-sm font-semibold text-blue-900">Units Billed (Estimated)</span> 
-                      <span className="text-xl font-bold text-emerald-700">{totalSoldQty}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-sm font-bold text-blue-950">Pending Fulfillment</span> 
-                      <span className="text-2xl font-black text-rose-600">{isLoadingData ? "..." : ordersLeftQty}</span>
-                    </div>
+                {balanceArray.length > 0 ? (
+                  <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50/80">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Name</th>
+                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Ordered</th>
+                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Billed</th>
+                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Balance Pending</th>
+                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {balanceArray.map((prod, idx) => {
+                          const percent = prod.ordered > 0 ? Math.min(100, (prod.billed / prod.ordered) * 100) : 100;
+                          const isComplete = prod.balance <= 0;
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-semibold text-gray-900">{prod.name}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <span className="text-sm font-medium text-gray-600">{prod.ordered} {prod.uom}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <span className="text-sm font-medium text-blue-600">{prod.billed} {prod.uom}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <span className={`text-sm font-bold ${prod.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                  {Math.max(0, prod.balance)} {prod.uom}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                 {isComplete ? (
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                                      Fulfilled
+                                    </span>
+                                 ) : (
+                                    <div className="w-full max-w-[120px] mx-auto flex items-center gap-2">
+                                       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                       </div>
+                                       <span className="text-xs font-semibold text-gray-500">{Math.round(percent)}%</span>
+                                    </div>
+                                 )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
+                ) : (
+                   <div className="text-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm font-medium text-gray-500">No product orders found to calculate balances.</p>
+                   </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* INVOICES TAB */}
+          {/* INVOICES TAB - SHOW STATUS BUTTONS AND CONFIRM MODAL */}
           {activeTab === "invoices" && (
             <div>
               <div className="flex justify-between items-center mb-6">
@@ -386,7 +527,24 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                     },
                     {
                       header: "Status",
-                      accessor: () => <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-yellow-100 text-yellow-800 border border-yellow-200">Unpaid</span>,
+                      className: "text-center",
+                      accessor: (inv) => {
+                        const isPaid = inv.status === "Paid";
+                        return isPaid ? (
+                           <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                              <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                              Paid
+                           </span>
+                        ) : (
+                           <button 
+                             onClick={() => setPayConfirmModal({ open: true, invoiceId: inv.id })} 
+                             className="px-3 py-1.5 text-xs font-bold rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300 transition-all shadow-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                             title="Click to mark this invoice as paid"
+                           >
+                             Mark as Paid
+                           </button>
+                        );
+                      }
                     },
                   ]}
                   searchable={true}
@@ -469,8 +627,8 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
           {activeTab === "payments" && (
             <div className="text-center py-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
                <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-               <p className="mt-4 text-sm font-medium text-gray-900">Payment tracking coming soon</p>
-               <p className="mt-1 text-sm text-gray-500">Record advances and settlements to calculate exact dues.</p>
+               <p className="mt-4 text-sm font-medium text-gray-900">Payment tracking functionality is live</p>
+               <p className="mt-1 text-sm text-gray-500">You can now track paid invoices and calculate dues automatically from the Invoices tab.</p>
             </div>
           )}
         </div>
@@ -615,7 +773,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
         </div>
       )}
 
-      {/* --- DELETE ORDER MODAL (PREMIUM WEBSITE POPUP) --- */}
+      {/* --- DELETE ORDER MODAL --- */}
       {deleteOrderConfirm.open && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 transition-opacity">
           <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-100 transform transition-all">
@@ -644,6 +802,41 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                 className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 border border-transparent rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 shadow-sm transition-colors"
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CONFIRM PAYMENT MODAL --- */}
+      {payConfirmModal.open && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 transition-opacity">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-100 transform transition-all">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-emerald-100 rounded-full mb-4">
+               <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center">
+              Confirm Payment
+            </h3>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              Are you sure you want to mark this invoice as paid? This action will update your revenue records.
+            </p>
+            <div className="mt-6 flex justify-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setPayConfirmModal({ open: false, invoiceId: null })}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMarkPaid}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-xl hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
+              >
+                Confirm Paid
               </button>
             </div>
           </div>

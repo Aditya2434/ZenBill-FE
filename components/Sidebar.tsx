@@ -143,18 +143,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userEmai
           })}
         </div>
       </nav>
-      <div className="px-6 py-4 border-t border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-700 truncate capitalize">{displayName}</p>
-            <p className="text-xs text-gray-500 truncate">{displayEmail || "Admin"}</p>
-          </div>
+
+      {/* ── Clickable Profile / Account Bottom Section ── */}
+      <button 
+        onClick={() => setView("account")}
+        className={`w-full px-6 py-4 border-t border-gray-200 flex items-center gap-3 transition-colors text-left focus:outline-none ${
+          currentView === "account" ? "bg-gray-100" : "hover:bg-gray-50"
+        }`}
+      >
+        <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm">
+          {initials}
         </div>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-700 truncate capitalize">{displayName}</p>
+          <p className="text-xs text-gray-500 truncate">{displayEmail || "Admin"}</p>
+        </div>
+        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
   );
 };
-
