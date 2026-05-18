@@ -8,6 +8,7 @@ import { Profile } from "./components/Profile";
 import { ClientManager } from "./components/ClientManager";
 import { ProductManager } from "./components/ProductManager";
 import { AccountSettings } from "./components/AccountSettings";
+import { TemplateSelector } from "./components/TemplateSelector";
 import { useInvoices } from "./hooks/useInvoices";
 import { useProfile } from "./hooks/useProfile";
 import { useClients } from "./hooks/useClients";
@@ -38,7 +39,8 @@ export type View =
   | "DummyPDF"
   | "login"
   | "signup"
-  | "invoice-details";
+  | "invoice-details"
+  | "templates";
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(() => {
@@ -185,6 +187,8 @@ const App: React.FC = () => {
             }}
           />
         );
+      case "templates":
+        return <TemplateSelector setView={handleSetView} />;
       case "create-quotation":
         return <QuotationList setView={handleSetView} />;
       

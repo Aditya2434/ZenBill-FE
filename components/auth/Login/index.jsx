@@ -10,12 +10,14 @@ const Login = ({ setView }) => {
     showPassword,
     isLoading,
     error,
+    successMessage,
     isValid,
     setEmail,
     setPassword,
     setRememberMe,
     toggleShowPassword,
     handleSubmit,
+    handleForgotPassword
   } = useLoginData();
   const navigate = useNavigate();
 
@@ -52,6 +54,16 @@ const Login = ({ setView }) => {
           <p className="text-slate-500 text-sm font-medium mb-8">
             Welcome back! Please enter your details to access your dashboard.
           </p>
+
+          {/* Success Banner */}
+          {successMessage && (
+            <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-100 flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="text-sm text-green-700 font-medium leading-relaxed">{successMessage}</p>
+            </div>
+          )}
 
           {/* Error Banner */}
           {error && (
@@ -105,7 +117,7 @@ const Login = ({ setView }) => {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={isLoading}
-                  required
+                  required={!successMessage} // don't strictly require if they just wanted to trigger forgot password, but typical form behavior will require it for standard submit
                 />
                 <button
                   type="button"
@@ -139,6 +151,7 @@ const Login = ({ setView }) => {
               </label>
               <button
                 type="button"
+                onClick={handleForgotPassword}
                 className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors focus:outline-none"
                 disabled={isLoading}
               >
@@ -162,7 +175,7 @@ const Login = ({ setView }) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Signing in...
+                  Processing...
                 </>
               ) : (
                 "Sign in"

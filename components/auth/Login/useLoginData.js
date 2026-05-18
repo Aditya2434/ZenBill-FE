@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { validateEmail, validatePassword } from "./helper";
 import { useAuth } from "../../../hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
-import { apiLogin } from "../../../utils/api";
+import { apiLogin, apiForgotPassword } from "../../../utils/api";
 
 export default function useLoginData() {
   const auth = useAuth();
@@ -12,6 +12,7 @@ export default function useLoginData() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loginMutation = useMutation({
     mutationFn: ({ email, password }) => apiLogin({ email, password }),
@@ -27,6 +28,7 @@ export default function useLoginData() {
 
   const handleSubmit = useCallback(async () => {
     setError("");
+    setSuccessMessage("");
     if (!isValid) return;
     setIsLoading(true);
     try {
@@ -48,6 +50,24 @@ export default function useLoginData() {
     }
   }, [email, password, isValid, auth, loginMutation]);
 
+  const handleForgotPassword = useCallback(async () => {
+    setError("");
+    setSuccessMessage("");
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address to reset your password.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await apiForgotPassword(email);
+      setSuccessMessage(response?.data || response?.message || "Password reset instructions sent.");
+    } catch (e) {
+      setError(e?.message || "Unable to reset password. Please verify the email.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email]);
+
   const handleOAuth = useCallback(async (provider) => {
     setError("OAuth not implemented");
   }, []);
@@ -59,14 +79,14 @@ export default function useLoginData() {
     showPassword,
     isLoading,
     error,
+    successMessage,
     isValid,
     setEmail,
     setPassword,
     setRememberMe,
     toggleShowPassword,
     handleSubmit,
+    handleForgotPassword,
     handleOAuth,
   };
 }
-
-
