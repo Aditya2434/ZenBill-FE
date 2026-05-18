@@ -82,6 +82,7 @@ export interface Invoice {
 export interface CompanyProfile {
   companyName: string;
   companyAddress: string;
+  email?: string; // <-- Added this line to fix the TypeScript error
   gstin: string;
   pan: string;
   companyState?: string;

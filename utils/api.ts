@@ -102,6 +102,10 @@ export function apiChangePassword(payload: { oldPassword: string; newPassword: s
   return request("/api/v1/auth/change-password", { method: "PUT", json: payload });
 }
 
+export function apiForgotPassword(email: string) {
+  return request("/api/v1/auth/forgot-password", { method: "POST", json: { email } });
+}
+
 // Invoices API
 export function apiCreateInvoice(payload: any) {
   return request("/api/v1/invoices", { method: "POST", json: payload });
