@@ -56,9 +56,11 @@ function numberToWordsINR(num: number): string {
   return res.trim().replace(/\s\s+/g, " ") + " RUPEES ONLY.";
 }
 
+// Added templateId as an optional prop
 type DummyPDFProps = {
   invoice: Invoice;
   profile: CompanyProfile;
+  templateId?: string;
 };
 
 
@@ -1030,7 +1032,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                   <Text style={styles.bankLabel}>A/C NAME</Text>
                   <View style={[styles.bankValueWrapper, styles.boldText]}>
                     <Text style={styles.bankValue}>
-                      PARAGON REFRACTORIES & MINERALS
+                      {invoice.bankDetails?.accountName || "PARAGON REFRACTORIES & MINERALS"}
                     </Text>
                   </View>
                 </View>
@@ -1038,7 +1040,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                   <Text style={styles.bankLabel}>A/C NO</Text>
                   <View style={styles.bankValueWrapper}>
                     <Text style={[styles.bankValue, styles.boldText]}>
-                      758601010050048
+                      {invoice.bankDetails?.accountNumber || "758601010050048"}
                     </Text>
                   </View>
                 </View>
@@ -1046,7 +1048,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                   <Text style={styles.bankLabel}>BANK</Text>
                   <View style={styles.bankValueWrapper}>
                     <Text style={[styles.bankValue, styles.boldText]}>
-                      UNION BANK OF INDIA
+                      {invoice.bankDetails?.bankName || "UNION BANK OF INDIA"}
                     </Text>
                   </View>
                 </View>
@@ -1054,7 +1056,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                   <Text style={styles.bankLabel}>BRANCH / IFSC</Text>
                   <View style={styles.bankValueWrapper}>
                     <Text style={[styles.bankValue, styles.boldText]}>
-                      CITY CENTRE , DURGAPUR / UBIN0815187
+                      {invoice.bankDetails?.branch || "CITY CENTRE"} / {invoice.bankDetails?.ifsc || "UBIN0815187"}
                     </Text>
                   </View>
                 </View>
@@ -1129,7 +1131,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
 
 
 // =========================================================================
-// 3. NEW TEMPLATE 2 (Tally ERP Style)
+// 3. UPDATED TEMPLATE 2 (Tally ERP Style with 3-Column Header)
 // =========================================================================
 const stylesTally = StyleSheet.create({
   page: { padding: 20, fontSize: 8, fontFamily: "Helvetica", color: "#000" },
@@ -1161,33 +1163,48 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
     <Document>
       <Page size="A4" style={stylesTally.page}>
         <View style={stylesTally.container}>
-          <View style={[stylesTally.row, stylesTally.borderBottom]}>
-            <View style={[{ width: "50%" }, stylesTally.p4, stylesTally.borderRight]}>
-              {profile.logo && <Image src={profile.logo} style={{ width: 60, height: 60, objectFit: "contain", marginBottom: 4 }} />}
-              <Text style={[stylesTally.bold, { fontSize: 12, marginBottom: 2 }]}>{profile.companyName}</Text>
-              <Text>{profile.companyAddress}</Text>
-              <Text>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
-              <Text>Email: {profile.email || ""}</Text>
-              <Text style={{ marginTop: 2 }}>PAN No.: <Text style={stylesTally.bold}>{profile.pan}</Text></Text>
-              <Text>GSTIN: <Text style={stylesTally.bold}>{profile.gstin}</Text></Text>
+          
+          {/* 1. Top Header - Logo (Left), Company Details (Center) & QR (Right) */}
+          <View style={[stylesTally.borderBottom, { padding: 12, minHeight: 90, flexDirection: 'row', alignItems: 'center' }]}>
+            {/* Left Side: Logo */}
+            <View style={{ width: '25%', alignItems: 'flex-start', justifyContent: 'center' }}>
+              {profile.logo && <Image src={profile.logo} style={{ width: 75, height: 75, objectFit: 'contain' }} />}
             </View>
-            <View style={[{ width: "50%" }, stylesTally.p4, { alignItems: "flex-end" }]}>
-               <Text style={[stylesTally.bold, { fontSize: 16 }]}>TAX INVOICE</Text>
-               <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: "#000", marginTop: 10, justifyContent: "center", alignItems: "center" }}>
-                  <Text style={{ color: "#aaa" }}>QR</Text>
+
+            {/* Centered Company Details */}
+            <View style={{ width: '50%', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={[stylesTally.bold, { fontSize: 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
+              <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
+              <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
+              {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
+              <Text style={{ marginTop: 3, textAlign: 'center' }}>PAN No.: <Text style={stylesTally.bold}>{profile.pan}</Text> | GSTIN: <Text style={stylesTally.bold}>{profile.gstin}</Text></Text>
+            </View>
+
+            {/* Right Side: QR Code */}
+            <View style={{ width: '25%', alignItems: 'flex-end', justifyContent: 'center' }}>
+               <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
+                  <Text style={{ color: '#aaa', fontSize: 8 }}>QR CODE</Text>
                </View>
             </View>
           </View>
+
+          {/* 2. TAX INVOICE Title Row */}
+          <View style={[stylesTally.borderBottom, stylesTally.p2, { backgroundColor: '#f0f0f0' }]}>
+             <Text style={[stylesTally.bold, stylesTally.textCenter, { fontSize: 14, letterSpacing: 2, paddingVertical: 4 }]}>TAX INVOICE</Text>
+          </View>
+
+          {/* 3. Grid Section - Addresses & Invoice Meta Data */}
           <View style={[stylesTally.row, stylesTally.borderBottom]}>
+            {/* Left Side: Ship To & Bill To */}
             <View style={[{ width: "50%" }, stylesTally.col, stylesTally.borderRight]}>
-              <View style={[stylesTally.p4, stylesTally.borderBottom, { minHeight: 80 }]}>
+              <View style={[stylesTally.p4, stylesTally.borderBottom, { minHeight: 90 }]}>
                 <Text style={stylesTally.label}>Consignee (Ship to)</Text>
                 <Text style={stylesTally.value}>{invoice.shippingDetails?.name || invoice.client.name}</Text>
                 <Text>{invoice.shippingDetails?.address || invoice.client.address}</Text>
                 <Text>State: {invoice.shippingDetails?.state || invoice.client.state} | Code: {invoice.shippingDetails?.stateCode || invoice.client.stateCode}</Text>
                 <Text>GSTIN: {invoice.shippingDetails?.gstin || invoice.client.gstin}</Text>
               </View>
-              <View style={[stylesTally.p4, { minHeight: 80 }]}>
+              <View style={[stylesTally.p4, { minHeight: 90 }]}>
                 <Text style={stylesTally.label}>Buyer (Bill to)</Text>
                 <Text style={stylesTally.value}>{invoice.client.name}</Text>
                 <Text>{invoice.client.address}</Text>
@@ -1195,63 +1212,156 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
                 <Text>GSTIN: {invoice.client.gstin}</Text>
               </View>
             </View>
+
+            {/* Right Side: 8-Row Meta Grid */}
             <View style={[{ width: "50%" }, stylesTally.col]}>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Invoice No.</Text><Text style={stylesTally.value}>{invoice.invoiceNumber}</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Dated</Text><Text style={stylesTally.value}>{invoice.issueDate}</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Invoice No.</Text>
+                  <Text style={stylesTally.value}>{invoice.invoiceNumber}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Dated</Text>
+                  <Text style={stylesTally.value}>{invoice.issueDate}</Text>
+                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Delivery Note</Text><Text style={stylesTally.value}>{invoice.grLrNo || "-"}</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Mode/Terms of Payment</Text><Text style={stylesTally.value}>-</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Delivery Note</Text>
+                  <Text style={stylesTally.value}>{invoice.grLrNo || "-"}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Mode/Terms of Payment</Text>
+                  <Text style={stylesTally.value}>-</Text>
+                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Buyer's Order No.</Text><Text style={stylesTally.value}>{invoice.orderNo || "-"}</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Dated</Text><Text style={stylesTally.value}>-</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Reference No. & Date.</Text>
+                  <Text style={stylesTally.value}>-</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Other Reference(s)</Text>
+                  <Text style={stylesTally.value}>-</Text>
+                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Dispatch Doc No.</Text><Text style={stylesTally.value}>-</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Delivery Note Date</Text><Text style={stylesTally.value}>-</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Buyer's Order No.</Text>
+                  <Text style={stylesTally.value}>{invoice.orderNo || "-"}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Dated</Text>
+                  <Text style={stylesTally.value}>-</Text>
+                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Dispatched through</Text><Text style={stylesTally.value}>{invoice.transportMode || "-"}</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Destination</Text><Text style={stylesTally.value}>{invoice.placeOfSupply || "-"}</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Dispatch Doc No.</Text>
+                  <Text style={stylesTally.value}>{invoice.eWayBillNo || "-"}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Delivery Note Date</Text>
+                  <Text style={stylesTally.value}>{invoice.dateOfSupply || "-"}</Text>
+                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}><Text style={stylesTally.label}>Bill of Lading/LR-RR No.</Text><Text style={stylesTally.value}>{invoice.grLrNo || "-"}</Text></View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}><Text style={stylesTally.label}>Motor Vehicle No.</Text><Text style={stylesTally.value}>{invoice.vehicleNo || "-"}</Text></View>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Dispatched through</Text>
+                  <Text style={stylesTally.value}>{invoice.transportMode || "-"}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Destination</Text>
+                  <Text style={stylesTally.value}>{invoice.placeOfSupply || "-"}</Text>
+                </View>
               </View>
-              <View style={[stylesTally.p4, { flex: 1 }]}><Text style={stylesTally.label}>Terms of Delivery</Text><Text style={stylesTally.value}>{invoice.termsAndConditions || "-"}</Text></View>
+              <View style={[stylesTally.row, stylesTally.borderBottom]}>
+                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Bill of Lading/LR-RR No.</Text>
+                  <Text style={stylesTally.value}>{invoice.grLrNo || "-"}</Text>
+                </View>
+                <View style={[{ width: "50%" }, stylesTally.p4]}>
+                  <Text style={stylesTally.label}>Motor Vehicle No.</Text>
+                  <Text style={stylesTally.value}>{invoice.vehicleNo || "-"}</Text>
+                </View>
+              </View>
+              <View style={[stylesTally.p4, { flex: 1 }]}>
+                <Text style={stylesTally.label}>Terms of Delivery</Text>
+                <Text style={stylesTally.value}>{invoice.termsAndConditions || "-"}</Text>
+              </View>
             </View>
           </View>
+
+          {/* 4. Table Header Row */}
           <View style={[stylesTally.row, stylesTally.borderBottom, stylesTally.tableHeader]}>
-            <View style={[{ width: "5%" }, stylesTally.borderRight, stylesTally.p4]}><Text>SI No.</Text></View>
+            <View style={[{ width: "5%" }, stylesTally.borderRight, stylesTally.p4]}><Text>Sl No.</Text></View>
             <View style={[{ width: "35%" }, stylesTally.borderRight, stylesTally.p4]}><Text>Description of Goods</Text></View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4]}><Text>HSN/SAC</Text></View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4]}><Text>Quantity</Text></View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4]}><Text>Rate</Text></View>
-            <View style={[{ width: "8%" }, stylesTally.borderRight, stylesTally.p4]}><Text>per</Text></View>
+            <View style={[{ width: "8%" }, stylesTally.borderRight, stylesTally.p4]}><Text>Per</Text></View>
             <View style={[{ width: "16%" }, stylesTally.p4]}><Text>Amount</Text></View>
           </View>
-          <View style={[stylesTally.row, stylesTally.borderBottom, { minHeight: 220 }]}>
-            <View style={[{ width: "5%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>{invoice.items.map((_, i) => <Text key={i} style={{ marginBottom: 4 }}>{i + 1}</Text>)}</View>
+
+          {/* 5. Table Body */}
+          <View style={[stylesTally.row, stylesTally.borderBottom, { minHeight: 200 }]}>
+            {/* Sl No */}
+            <View style={[{ width: "5%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
+              {invoice.items.map((_, i) => <Text key={i} style={{ marginBottom: 4 }}>{i + 1}</Text>)}
+            </View>
+            {/* Description */}
             <View style={[{ width: "35%" }, stylesTally.borderRight, stylesTally.p4]}>
               {invoice.items.map((item, i) => <Text key={i} style={[stylesTally.bold, { marginBottom: 4 }]}>{item.description}</Text>)}
-              <View style={{ marginTop: 20 }}>{cgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>CGST:</Text>}{sgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>SGST:</Text>}{igstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>IGST:</Text>}</View>
+              <View style={{ marginTop: 20 }}>
+                 {cgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>CGST:</Text>}
+                 {sgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>SGST:</Text>}
+                 {igstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>IGST:</Text>}
+              </View>
             </View>
-            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>{invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.hsnCode || "-"}</Text>)}</View>
-            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>{invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.quantity}</Text>)}</View>
-            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>{invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.unitPrice)}</Text>)}</View>
-            <View style={[{ width: "8%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>{invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.uom || "-"}</Text>)}</View>
+            {/* HSN/SAC */}
+            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
+              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.hsnCode || "-"}</Text>)}
+            </View>
+            {/* Quantity */}
+            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>
+              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.quantity}</Text>)}
+            </View>
+            {/* Rate */}
+            <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>
+              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.unitPrice)}</Text>)}
+            </View>
+            {/* Per */}
+            <View style={[{ width: "8%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
+              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.uom || "-"}</Text>)}
+            </View>
+            {/* Amount */}
             <View style={[{ width: "16%" }, stylesTally.p4, stylesTally.textRight]}>
               {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.quantity * item.unitPrice)}</Text>)}
-              <View style={{ marginTop: 20 }}>{cgstAmount > 0 && <Text>{formatCurrencyINR(cgstAmount)}</Text>}{sgstAmount > 0 && <Text>{formatCurrencyINR(sgstAmount)}</Text>}{igstAmount > 0 && <Text>{formatCurrencyINR(igstAmount)}</Text>}</View>
+              <View style={{ marginTop: 20 }}>
+                 {cgstAmount > 0 && <Text>{formatCurrencyINR(cgstAmount)}</Text>}
+                 {sgstAmount > 0 && <Text>{formatCurrencyINR(sgstAmount)}</Text>}
+                 {igstAmount > 0 && <Text>{formatCurrencyINR(igstAmount)}</Text>}
+              </View>
             </View>
           </View>
+
+          {/* 6. Total Final Row */}
           <View style={[stylesTally.row, stylesTally.borderBottom]}>
-             <View style={[{ width: "84%" }, stylesTally.borderRight, stylesTally.p4, { alignItems: "flex-end" }]}><Text style={stylesTally.bold}>Total</Text></View>
-             <View style={[{ width: "16%" }, stylesTally.p4, stylesTally.textRight]}><Text style={stylesTally.bold}>{formatCurrencyINR(total)}</Text></View>
+             <View style={[{ width: "84%" }, stylesTally.borderRight, stylesTally.p4, { alignItems: "flex-end" }]}>
+                <Text style={stylesTally.bold}>Total</Text>
+             </View>
+             <View style={[{ width: "16%" }, stylesTally.p4, stylesTally.textRight]}>
+                <Text style={stylesTally.bold}>{formatCurrencyINR(total)}</Text>
+             </View>
           </View>
-          <View style={[stylesTally.borderBottom, stylesTally.p4]}><Text style={stylesTally.label}>Amount Chargeable (in words)</Text><Text style={stylesTally.bold}>{numberToWordsINR(total)}</Text></View>
+
+          {/* 7. Amount in words */}
+          <View style={[stylesTally.borderBottom, stylesTally.p4]}>
+             <Text style={stylesTally.label}>Amount Chargeable (in words)</Text>
+             <Text style={stylesTally.bold}>{numberToWordsINR(total)}</Text>
+          </View>
+
+          {/* 8. Tax Table Breakdown */}
           <View style={[stylesTally.row, stylesTally.borderBottom, stylesTally.tableHeader]}>
              <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2]}><Text>HSN/SAC</Text></View>
              <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2]}><Text>Taxable Value</Text></View>
@@ -1266,12 +1376,14 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
              <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(sgstAmount)}</Text></View>
              <View style={[{ width: "20%" }, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(totalTax)}</Text></View>
           </View>
+
+          {/* 9. Bank Details Row */}
           <View style={[stylesTally.row, stylesTally.borderBottom]}>
              <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
                 <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Bank Details</Text>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Bank Name</Text><Text style={stylesTally.value}>: {profile.defaultBankDetails?.bankName}</Text></View>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>A/c No.</Text><Text style={stylesTally.value}>: {profile.defaultBankDetails?.accountNumber}</Text></View>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Branch & IFSC</Text><Text style={stylesTally.value}>: {profile.defaultBankDetails?.branch} & {profile.defaultBankDetails?.ifsc}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Bank Name</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>A/c No.</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Branch & IFSC</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc}</Text></View>
              </View>
              <View style={[{ width: "50%" }, stylesTally.p4]}>
                 <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Tax Details</Text>
@@ -1279,6 +1391,8 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
                 <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>GSTIN</Text><Text style={stylesTally.value}>: {profile.gstin}</Text></View>
              </View>
           </View>
+
+          {/* 10. Final Declaration & Signature Row */}
           <View style={[stylesTally.row, { flexGrow: 1 }]}>
              <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
                 <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Declaration</Text>
@@ -1286,10 +1400,15 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
              </View>
              <View style={[{ width: "50%" }, stylesTally.p4, { justifyContent: "space-between" }]}>
                 <Text style={[stylesTally.bold, stylesTally.textRight]}>for {profile.companyName}</Text>
-                {profile.authorizedSignature ? (<Image src={profile.authorizedSignature} style={{ height: 40, objectFit: 'contain', alignSelf: 'flex-end', marginTop: 10 }} />) : (<View style={{ height: 40, marginTop: 10 }} />)}
+                {profile.authorizedSignature ? (
+                  <Image src={profile.authorizedSignature} style={{ height: 40, objectFit: 'contain', alignSelf: 'flex-end', marginTop: 10 }} />
+                ) : (
+                  <View style={{ height: 40, marginTop: 10 }} />
+                )}
                 <Text style={[stylesTally.textRight, stylesTally.label]}>Authorised Signatory</Text>
              </View>
           </View>
+
         </View>
         <Text style={[stylesTally.textCenter, { marginTop: 4, fontSize: 7, color: "#888" }]}>This is a Computer Generated Invoice</Text>
       </Page>
@@ -1301,9 +1420,9 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
 // 4. SMART EXPORT ROUTER
 // =========================================================================
 export default function DummyPDF(props: DummyPDFProps) {
-  let selectedTemplate = "default";
+  let selectedTemplate = props.templateId;
   
-  if (typeof window !== "undefined") {
+  if (!selectedTemplate && typeof window !== "undefined") {
     selectedTemplate = localStorage.getItem("zenbill_template") || "default";
   }
 

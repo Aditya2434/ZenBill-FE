@@ -87,37 +87,47 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
       <Page size="A4" style={styles.page}>
         <View style={styles.container}>
           
-          {/* 1. Top Header - Company Details & QR */}
-          <View style={[styles.row, styles.borderBottom]}>
-            <View style={[{ width: "50%" }, styles.p4, styles.borderRight]}>
-              {profile.logo && <Image src={profile.logo} style={{ width: 60, height: 60, objectFit: "contain", marginBottom: 4 }} />}
-              <Text style={[styles.bold, { fontSize: 12, marginBottom: 2 }]}>{profile.companyName}</Text>
-              <Text>{profile.companyAddress}</Text>
-              <Text>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
-              <Text>Email: {profile.email || ""}</Text>
-              <Text style={{ marginTop: 2 }}>PAN No.: <Text style={styles.bold}>{profile.pan}</Text></Text>
-              <Text>GSTIN: <Text style={styles.bold}>{profile.gstin}</Text></Text>
+          {/* 1. Header (Logo Left, Center Details, QR Right) */}
+          <View style={[styles.borderBottom, { padding: 12, minHeight: 90, flexDirection: 'row', alignItems: 'center' }]}>
+            {/* Left Side: Logo */}
+            <View style={{ width: '25%', alignItems: 'flex-start', justifyContent: 'center' }}>
+              {profile.logo && <Image src={profile.logo} style={{ width: 75, height: 75, objectFit: 'contain' }} />}
             </View>
-            <View style={[{ width: "50%" }, styles.p4, { alignItems: "flex-end" }]}>
-               <Text style={[styles.bold, { fontSize: 16 }]}>TAX INVOICE</Text>
-               <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: "#000", marginTop: 10, justifyContent: "center", alignItems: "center" }}>
-                  <Text style={{ color: "#aaa" }}>QR CODE</Text>
+
+            {/* Centered Company Details */}
+            <View style={{ width: '50%', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={[styles.bold, { fontSize: 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
+              <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
+              <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
+              {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
+              <Text style={{ marginTop: 3, textAlign: 'center' }}>PAN No.: <Text style={styles.bold}>{profile.pan}</Text> | GSTIN: <Text style={styles.bold}>{profile.gstin}</Text></Text>
+            </View>
+
+            {/* Right Side: QR Code */}
+            <View style={{ width: '25%', alignItems: 'flex-end', justifyContent: 'center' }}>
+               <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
+                  <Text style={{ color: '#aaa', fontSize: 8 }}>QR CODE</Text>
                </View>
             </View>
           </View>
 
-          {/* 2. Grid Section - Addresses & Invoice Meta Data */}
+          {/* 2. TAX INVOICE Title Row */}
+          <View style={[styles.borderBottom, styles.p2, { backgroundColor: '#f0f0f0' }]}>
+             <Text style={[styles.bold, styles.textCenter, { fontSize: 14, letterSpacing: 2, paddingVertical: 4 }]}>TAX INVOICE</Text>
+          </View>
+
+          {/* 3. Grid Section - Addresses & Invoice Meta Data */}
           <View style={[styles.row, styles.borderBottom]}>
             {/* Left Side: Ship To & Bill To */}
             <View style={[{ width: "50%" }, styles.col, styles.borderRight]}>
-              <View style={[styles.p4, styles.borderBottom, { minHeight: 80 }]}>
+              <View style={[styles.p4, styles.borderBottom, { minHeight: 90 }]}>
                 <Text style={styles.label}>Consignee (Ship to)</Text>
                 <Text style={styles.value}>{invoice.shippingDetails?.name || invoice.client.name}</Text>
                 <Text>{invoice.shippingDetails?.address || invoice.client.address}</Text>
                 <Text>State: {invoice.shippingDetails?.state || invoice.client.state} | Code: {invoice.shippingDetails?.stateCode || invoice.client.stateCode}</Text>
                 <Text>GSTIN: {invoice.shippingDetails?.gstin || invoice.client.gstin}</Text>
               </View>
-              <View style={[styles.p4, { minHeight: 80 }]}>
+              <View style={[styles.p4, { minHeight: 90 }]}>
                 <Text style={styles.label}>Buyer (Bill to)</Text>
                 <Text style={styles.value}>{invoice.client.name}</Text>
                 <Text>{invoice.client.address}</Text>
@@ -126,7 +136,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
               </View>
             </View>
 
-            {/* Right Side: Tally-style Invoice Details Grid */}
+            {/* Right Side: 8-Row Meta Grid */}
             <View style={[{ width: "50%" }, styles.col]}>
               <View style={[styles.row, styles.borderBottom]}>
                 <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
@@ -150,6 +160,16 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
               </View>
               <View style={[styles.row, styles.borderBottom]}>
                 <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
+                  <Text style={styles.label}>Reference No. & Date.</Text>
+                  <Text style={styles.value}>-</Text>
+                </View>
+                <View style={[{ width: "50%" }, styles.p4]}>
+                  <Text style={styles.label}>Other Reference(s)</Text>
+                  <Text style={styles.value}>-</Text>
+                </View>
+              </View>
+              <View style={[styles.row, styles.borderBottom]}>
+                <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                   <Text style={styles.label}>Buyer's Order No.</Text>
                   <Text style={styles.value}>{invoice.orderNo || "-"}</Text>
                 </View>
@@ -161,11 +181,11 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
               <View style={[styles.row, styles.borderBottom]}>
                 <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                   <Text style={styles.label}>Dispatch Doc No.</Text>
-                  <Text style={styles.value}>-</Text>
+                  <Text style={styles.value}>{invoice.eWayBillNo || "-"}</Text>
                 </View>
                 <View style={[{ width: "50%" }, styles.p4]}>
                   <Text style={styles.label}>Delivery Note Date</Text>
-                  <Text style={styles.value}>-</Text>
+                  <Text style={styles.value}>{invoice.dateOfSupply || "-"}</Text>
                 </View>
               </View>
               <View style={[styles.row, styles.borderBottom]}>
@@ -195,20 +215,20 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
             </View>
           </View>
 
-          {/* 3. Table Header Row */}
+          {/* 4. Table Header Row */}
           <View style={[styles.row, styles.borderBottom, styles.tableHeader]}>
-            <View style={[{ width: "5%" }, styles.borderRight, styles.p4]}><Text>SI No.</Text></View>
+            <View style={[{ width: "5%" }, styles.borderRight, styles.p4]}><Text>Sl No.</Text></View>
             <View style={[{ width: "35%" }, styles.borderRight, styles.p4]}><Text>Description of Goods</Text></View>
             <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>HSN/SAC</Text></View>
             <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>Quantity</Text></View>
             <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>Rate</Text></View>
-            <View style={[{ width: "8%" }, styles.borderRight, styles.p4]}><Text>per</Text></View>
+            <View style={[{ width: "8%" }, styles.borderRight, styles.p4]}><Text>Per</Text></View>
             <View style={[{ width: "16%" }, styles.p4]}><Text>Amount</Text></View>
           </View>
 
-          {/* 4. Table Body (Vertical Columns keep borders extending seamlessly) */}
-          <View style={[styles.row, styles.borderBottom, { minHeight: 220 }]}>
-            {/* SI No */}
+          {/* 5. Table Body */}
+          <View style={[styles.row, styles.borderBottom, { minHeight: 200 }]}>
+            {/* Sl No */}
             <View style={[{ width: "5%" }, styles.borderRight, styles.p4, styles.textCenter]}>
               {invoice.items.map((_, i) => <Text key={i} style={{ marginBottom: 4 }}>{i + 1}</Text>)}
             </View>
@@ -233,7 +253,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
             <View style={[{ width: "12%" }, styles.borderRight, styles.p4, styles.textRight]}>
               {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.unitPrice)}</Text>)}
             </View>
-            {/* per */}
+            {/* Per */}
             <View style={[{ width: "8%" }, styles.borderRight, styles.p4, styles.textCenter]}>
               {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.uom || "-"}</Text>)}
             </View>
@@ -248,7 +268,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
             </View>
           </View>
 
-          {/* 5. Total Final Row */}
+          {/* 6. Total Final Row */}
           <View style={[styles.row, styles.borderBottom]}>
              <View style={[{ width: "84%" }, styles.borderRight, styles.p4, { alignItems: "flex-end" }]}>
                 <Text style={styles.bold}>Total</Text>
@@ -258,13 +278,13 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
              </View>
           </View>
 
-          {/* 6. Amount in words */}
+          {/* 7. Amount in words */}
           <View style={[styles.borderBottom, styles.p4]}>
              <Text style={styles.label}>Amount Chargeable (in words)</Text>
              <Text style={styles.bold}>{numberToWordsINR(total)}</Text>
           </View>
 
-          {/* 7. Tax Table Breakdown */}
+          {/* 8. Tax Table Breakdown */}
           <View style={[styles.row, styles.borderBottom, styles.tableHeader]}>
              <View style={[{ width: "20%" }, styles.borderRight, styles.p2]}><Text>HSN/SAC</Text></View>
              <View style={[{ width: "20%" }, styles.borderRight, styles.p2]}><Text>Taxable Value</Text></View>
@@ -280,13 +300,13 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
              <View style={[{ width: "20%" }, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(totalTax)}</Text></View>
           </View>
 
-          {/* 8. Bank Details Row */}
+          {/* 9. Bank Details Row */}
           <View style={[styles.row, styles.borderBottom]}>
              <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                 <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Bank Details</Text>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Bank Name</Text><Text style={styles.value}>: {profile.defaultBankDetails?.bankName}</Text></View>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>A/c No.</Text><Text style={styles.value}>: {profile.defaultBankDetails?.accountNumber}</Text></View>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Branch & IFSC</Text><Text style={styles.value}>: {profile.defaultBankDetails?.branch} & {profile.defaultBankDetails?.ifsc}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Bank Name</Text><Text style={styles.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>A/c No.</Text><Text style={styles.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Branch & IFSC</Text><Text style={styles.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc}</Text></View>
              </View>
              <View style={[{ width: "50%" }, styles.p4]}>
                 <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Tax Details</Text>
@@ -295,7 +315,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
              </View>
           </View>
 
-          {/* 9. Final Declaration & Signature Row */}
+          {/* 10. Final Declaration & Signature Row */}
           <View style={[styles.row, { flexGrow: 1 }]}>
              <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                 <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Declaration</Text>
