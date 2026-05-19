@@ -26,13 +26,13 @@ const TEMPLATES: TemplateDef[] = [
     name: "Template 2 (Tally ERP Format)",
     description: "A highly structured, grid-based layout matching traditional accounting software formats. Side-by-side addresses with a detailed tabular footer.",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    badge: "New Layout",
   },
   {
-    id: "modern",
-    name: "Modern Crisp",
-    description: "A sleek, contemporary design with accented typography, clean left-aligned sections, and minimal borders.",
-    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    id: "template3",
+    name: "Template 3 (Professional)",
+    description: "A professional top-down hierarchy. Prominent company name, separated header details, split addresses, and structured metadata rows before the item table.",
+    color: "bg-purple-50 text-purple-700 border-purple-200",
+    badge: "New Layout",
   },
   {
     id: "simple",
@@ -44,7 +44,7 @@ const TEMPLATES: TemplateDef[] = [
     id: "creative",
     name: "Creative Studio",
     description: "A bold, stylized layout with modern geometric accents designed for freelancers, agencies, and studios.",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
+    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
   },
 ];
 
@@ -172,7 +172,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
               </div>
 
               {/* Footer Bank & Terms */}
-              {/* Changed from fixed height to shrink-0 so it fits dynamically inside the border */}
               <div className="p-4 flex flex-col shrink-0">
                 <div className="font-bold mb-2 uppercase tracking-wide">OUR BANK DETAIL :</div>
                 <div className="flex"><span className="w-36 font-semibold">A/C NAME</span><span className="font-bold">: YOUR COMPANY NAME CO.</span></div>
@@ -317,7 +316,143 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
           </div>
         );
 
-      case "modern":
+      case "template3":
+        return (
+          <div className="w-[800px] h-[1130px] bg-white p-8 text-[13px] text-black font-sans box-border flex flex-col shadow-sm">
+            <div className="border border-black flex-1 flex flex-col">
+              
+              {/* Box 1: Company Name */}
+              <div className="border-b border-black p-3 text-center shrink-0 bg-gray-50">
+                <div className="text-2xl font-bold uppercase tracking-wide">YOUR COMPANY NAME CO.</div>
+              </div>
+
+              {/* Box 2: Three Parts (Logo, Details, QR) */}
+              <div className="flex border-b border-black divide-x divide-black shrink-0 items-center min-h-[90px]">
+                <div className="w-[20%] flex justify-center p-2">
+                  <div className="w-16 h-16 bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 text-gray-500 font-bold">LOGO</div>
+                </div>
+                <div className="w-[60%] p-2 text-center">
+                  <div className="mt-1">123 Corporate Office Blvd, Business District, State</div>
+                  <div className="mt-1">State: West Bengal | Code: 19</div>
+                  <div className="font-bold mt-1">GSTIN: 22AAAAA0000A1Z0 &nbsp;&nbsp;&nbsp; PAN: ABCDE1234F</div>
+                </div>
+                <div className="w-[20%] flex justify-center p-2">
+                  <div className="w-16 h-16 border border-gray-400 bg-gray-50 flex items-center justify-center text-gray-500 font-bold text-xs">QR</div>
+                </div>
+              </div>
+
+              {/* Box 3: Tax Invoice Heading */}
+              <div className="text-center font-bold text-lg border-b border-black py-1.5 shrink-0 bg-gray-100 uppercase tracking-widest">
+                TAX INVOICE
+              </div>
+              
+              {/* Box 4: Bill To / Ship To */}
+              <div className="grid grid-cols-2 border-b border-black divide-x divide-black shrink-0">
+                {/* Billed To */}
+                <div className="flex flex-col">
+                  <div className="bg-gray-200 text-center font-bold py-1.5 border-b border-black">DETAILS OF RECEIVER (BILLED TO)</div>
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex"><span className="w-24 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
+                  </div>
+                </div>
+                {/* Shipped To */}
+                <div className="flex flex-col">
+                  <div className="bg-gray-200 text-center font-bold py-1.5 border-b border-black">DETAILS OF RECEIVER (SHIPPED TO)</div>
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex"><span className="w-24 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
+                    <div className="flex"><span className="w-24 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 5: Meta Details Left / Right */}
+              <div className="grid grid-cols-2 border-b border-black divide-x divide-black shrink-0">
+                {/* Left */}
+                <div className="p-3 space-y-1.5">
+                  <div className="flex"><span className="w-48 font-semibold">Tax Invoice No.</span><span className="font-bold">: INV/2026/001</span></div>
+                  <div className="flex"><span className="w-48 font-semibold">Date</span><span className="font-bold">: 18-05-2026</span></div>
+                  <div className="flex"><span className="w-48 font-semibold">Tax Payable on Reverse Charge</span><span>: No</span></div>
+                  <div className="flex"><span className="w-48 font-semibold">State & Code</span><span className="font-bold">: West Bengal 19</span></div>
+                </div>
+                {/* Right */}
+                <div className="p-3 space-y-1.5">
+                  <div className="flex"><span className="w-36 font-semibold">Transport Mode</span><span>: Road</span></div>
+                  <div className="flex"><span className="w-36 font-semibold">Vehicle No</span><span className="font-bold">: WB-XX-0000</span></div>
+                  <div className="flex"><span className="w-36 font-semibold">Date of Supply</span><span className="font-bold">: 18-05-2026</span></div>
+                  <div className="flex"><span className="w-36 font-semibold">Place of Supply</span><span>: Destination City</span></div>
+                  <div className="flex"><span className="w-36 font-semibold">Order No</span><span className="font-bold">: ORD-999</span></div>
+                </div>
+              </div>
+
+              {/* Box 6: Product Table (Copied from default) */}
+              <div className="flex border-b border-black font-bold text-center divide-x divide-black bg-gray-100 shrink-0">
+                <div className="w-[6%] p-2">S.NO</div>
+                <div className="w-[34%] p-2">DESCRIPTION OF GOODS</div>
+                <div className="w-[12%] p-2">HSN CODE</div>
+                <div className="w-[12%] p-2">UOM</div>
+                <div className="w-[12%] p-2">QUANTITY</div>
+                <div className="w-[12%] p-2">RATE</div>
+                <div className="w-[12%] p-2">AMOUNT</div>
+              </div>
+              <div className="flex-1 flex divide-x divide-black border-b border-black">
+                <div className="w-[6%] p-3 text-center">1</div>
+                <div className="w-[34%] p-3 text-left font-semibold">Sample Premium Product</div>
+                <div className="w-[12%] p-3 text-center">000000</div>
+                <div className="w-[12%] p-3 text-center">NOS</div>
+                <div className="w-[12%] p-3 text-right">10</div>
+                <div className="w-[12%] p-3 text-right">5,000.00</div>
+                <div className="w-[12%] p-3 text-right pr-4">50,000.00</div>
+              </div>
+
+              {/* Box 7+: Totals and Footer (Copied from default) */}
+              <div className="grid grid-cols-2 border-b border-black divide-x divide-black shrink-0">
+                <div className="p-3">
+                  <span className="font-bold block mb-1">Total Amount in Words INR:</span>
+                  <span>FIFTY NINE THOUSAND RUPEES ONLY.</span>
+                </div>
+                <div className="p-3 space-y-1">
+                  <div className="flex justify-between"><span className="font-bold">Total Amount before tax</span><span>50,000.00</span></div>
+                  <div className="flex justify-between font-bold"><span>Add: CGST @ 9%</span><span>4,500.00</span></div>
+                  <div className="flex justify-between font-bold"><span>Add: SGST @ 9%</span><span>4,500.00</span></div>
+                  <div className="flex justify-between font-bold border-t border-black mt-2 pt-2"><span>Total Tax Amount</span><span>9,000.00</span></div>
+                  <div className="flex justify-between font-bold border-t border-black mt-2 pt-2"><span>Total Amount after Tax</span><span>59,000.00</span></div>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col shrink-0">
+                <div className="font-bold mb-2 uppercase tracking-wide">OUR BANK DETAIL :</div>
+                <div className="flex"><span className="w-36 font-semibold">A/C NAME</span><span className="font-bold">: YOUR COMPANY NAME CO.</span></div>
+                <div className="flex"><span className="w-36 font-semibold">A/C NO</span><span className="font-bold">: 758601010050048</span></div>
+                <div className="flex"><span className="w-36 font-semibold">BANK</span><span className="font-bold">: UNION BANK OF INDIA</span></div>
+                <div className="flex"><span className="w-36 font-semibold">BRANCH / IFSC</span><span className="font-bold">: CITY CENTRE / UBIN0815187</span></div>
+                
+                <div className="mt-3">
+                  <div className="font-bold underline mb-1.5">Terms & Condition for Supply :</div>
+                  <div>1. Goods once sold will not be taken back.</div>
+                  <div>2. Interest @18% p.a. will be charged if payment is delayed.</div>
+                </div>
+
+                <div className="grid grid-cols-3 mt-4 items-end">
+                  <div className="pb-1">Subject to <span className="font-bold">DURGAPUR</span> Jurisdiction</div>
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full border border-gray-400 flex items-center justify-center text-gray-400 text-xs mb-1">SEAL</div>
+                    <span>Common seal</span>
+                  </div>
+                  <div className="flex flex-col items-end pb-1">
+                    <div className="font-bold mb-8">For YOUR COMPANY NAME CO.</div>
+                    <div className="font-bold">Authorised</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case "simple":
       case "creative":
       default:
@@ -355,7 +490,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
       </div>
 
       <div className="p-6 md:p-8 bg-slate-50/50">
-        {/* Enforced 3 Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
           {TEMPLATES.map((template) => {
             const isActive = activeTemplate === template.id;
@@ -394,7 +528,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                 </div>
 
                 {/* Thumbnail Container */}
-                {/* Fixed Container size: 800 * 0.35 = 280px width, 1130 * 0.35 = 395.5px height. */}
                 <div className="mb-6 flex justify-center bg-slate-100 py-6 rounded-xl border border-slate-200 shadow-inner relative overflow-hidden">
                    <div className="relative w-[280px] h-[395px] bg-white overflow-hidden shadow-sm border border-gray-300">
                       <div className="absolute top-0 left-0 w-[800px] h-[1130px] origin-top-left scale-[0.35] pointer-events-none">
@@ -440,7 +573,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-8 animate-fade-in" onClick={() => setPreviewTemplateId(null)}>
            <div className="bg-slate-100 rounded-2xl max-w-5xl w-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               
-              {/* Modal Header */}
               <div className="flex justify-between items-center p-5 border-b border-slate-200 bg-white shrink-0">
                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
@@ -456,15 +588,12 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                  </button>
               </div>
 
-              {/* Scrollable Modal Body */}
               <div className="p-8 overflow-y-auto flex-1 flex justify-center bg-slate-200/50">
-                 {/* Native size rendering, letting the user scroll naturally through the document */}
                  <div className="shadow-2xl ring-1 ring-black/5 bg-white transform origin-top shrink-0">
                    {renderLivePreviewInvoice(previewTemplateId)}
                  </div>
               </div>
 
-              {/* Modal Footer */}
               <div className="p-4 bg-white border-t border-slate-200 flex justify-end gap-3 shrink-0">
                  <button onClick={() => setPreviewTemplateId(null)} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors">
                    Close Preview
