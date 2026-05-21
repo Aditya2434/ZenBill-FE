@@ -116,9 +116,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-xl max-h-96 overflow-y-auto">
           {searchable && (
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
               <input
                 type="text"
                 value={searchTerm}
@@ -143,7 +143,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                   onClick={() => !option.disabled && handleSelect(option.value)}
                   disabled={option.disabled}
                   className={`
-                    w-full px-4 py-2 text-left text-sm
+                    w-full px-4 py-2.5 text-left text-sm
                     ${
                       option.value === value
                         ? "bg-blue-50 text-blue-900 font-medium"

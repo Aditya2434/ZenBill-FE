@@ -58,6 +58,9 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItemForm[]>([]);
   const [deleteOrderConfirm, setDeleteOrderConfirm] = useState<{ open: boolean; id?: number }>({ open: false });
   
+  // Selected Order for Overview Details
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<BackendOrder | null>(null);
+
   // Payment Confirm Modal State
   const [payConfirmModal, setPayConfirmModal] = useState<{ open: boolean; invoiceId: string | number | null }>({ open: false, invoiceId: null });
 
@@ -106,26 +109,18 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     );
   }
 
-  // --- Calculations & Balances ---
+  // --- Financial Balances ---
   const totalBilled = backendInvoices.reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0);
   const totalPaid = backendInvoices.filter(inv => inv.status === 'Paid').reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0); 
   const totalDue = totalBilled - totalPaid;
 
+  // --- Smart FIFO Order Fulfillment Calculation ---
   let totalOrderedQty = 0;
   let totalSoldQty = 0; 
+  
+  const globalBilled: Record<string, number> = {};
 
-  const productBalances: Record<string, { ordered: number; billed: number; uom: string }> = {};
-
-  backendOrders.forEach(order => {
-    order.items.forEach(item => {
-      totalOrderedQty += item.quantity;
-      if (!productBalances[item.productName]) {
-        productBalances[item.productName] = { ordered: 0, billed: 0, uom: item.uom || '' };
-      }
-      productBalances[item.productName].ordered += item.quantity;
-    });
-  });
-
+  // 1. Tally up everything that has been billed
   backendInvoices.forEach(inv => {
     if (Array.isArray(inv.items)) {
       inv.items.forEach((item: any) => {
@@ -133,25 +128,53 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
         totalSoldQty += qty;
         const name = item.description || item.productName;
         if (name) {
-          if (!productBalances[name]) {
-            productBalances[name] = { ordered: 0, billed: 0, uom: item.uom || '' };
-          }
-          productBalances[name].billed += qty;
+          globalBilled[name] = (globalBilled[name] || 0) + qty;
         }
       });
     }
   });
 
+  // 2. Distribute the billed items across the orders (oldest first) to see which orders are fulfilled
+  const sortedOrders = [...backendOrders].sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+  
+  const orderFulfillment: Record<number, { items: any[], status: string, percent: number }> = {};
+
+  sortedOrders.forEach(order => {
+    const itemsData: any[] = [];
+    let orderTotalOrdered = 0;
+    let orderTotalBilled = 0;
+
+    order.items.forEach(item => {
+      const name = item.productName;
+      const ordered = item.quantity;
+      const available = globalBilled[name] || 0;
+      const billed = Math.min(ordered, available);
+      
+      // Deduct from global pool
+      globalBilled[name] = available - billed;
+
+      orderTotalOrdered += ordered;
+      orderTotalBilled += billed;
+      totalOrderedQty += ordered;
+
+      itemsData.push({
+        name,
+        uom: item.uom || '',
+        ordered,
+        billed,
+        balance: ordered - billed,
+        percent: ordered > 0 ? Math.min(100, (billed / ordered) * 100) : 100
+      });
+    });
+
+    orderFulfillment[order.id] = {
+      items: itemsData,
+      status: orderTotalOrdered === orderTotalBilled ? 'Fulfilled' : (orderTotalBilled > 0 ? 'Partial' : 'Pending'),
+      percent: orderTotalOrdered > 0 ? (orderTotalBilled / orderTotalOrdered) * 100 : 100
+    };
+  });
+
   const ordersLeftQty = Math.max(0, totalOrderedQty - totalSoldQty);
-
-  const balanceArray = Object.entries(productBalances).map(([name, data]) => ({
-    name,
-    ordered: data.ordered,
-    billed: data.billed,
-    uom: data.uom,
-    balance: data.ordered - data.billed
-  }));
-
 
   const isClientUnchanged = Boolean(
     clientFormData &&
@@ -239,6 +262,9 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     try {
       await apiDeleteOrder(deleteOrderConfirm.id);
       setBackendOrders(backendOrders.filter(o => o.id !== deleteOrderConfirm.id));
+      if (selectedOrderDetails?.id === deleteOrderConfirm.id) {
+         setSelectedOrderDetails(null);
+      }
       showToast("Order deleted successfully", "success");
     } catch (err: any) {
       showToast("Failed to delete order. Check backend connection.", "error");
@@ -285,7 +311,6 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
     }
   };
 
-  // --- NEW MARK AS PAID HANDLER (WITH CONFIRMATION) ---
   const confirmMarkPaid = async () => {
     if (!payConfirmModal.invoiceId) return;
     try {
@@ -440,68 +465,134 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                 </div>
               </div>
 
-              {/* PRODUCT BALANCES TABLE */}
+              {/* ORDERS & BALANCES SECTION */}
               <div className="mt-10">
-                <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
-                   <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                   Product Fulfillment & Balances
-                </h3>
-                {balanceArray.length > 0 ? (
-                  <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50/80">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Name</th>
-                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Ordered</th>
-                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Billed</th>
-                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Balance Pending</th>
-                          <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {balanceArray.map((prod, idx) => {
-                          const percent = prod.ordered > 0 ? Math.min(100, (prod.billed / prod.ordered) * 100) : 100;
-                          const isComplete = prod.balance <= 0;
-                          return (
-                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="text-sm font-semibold text-gray-900">{prod.name}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <span className="text-sm font-medium text-gray-600">{prod.ordered} {prod.uom}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <span className="text-sm font-medium text-blue-600">{prod.billed} {prod.uom}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <span className={`text-sm font-bold ${prod.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                  {Math.max(0, prod.balance)} {prod.uom}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                 {isComplete ? (
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
-                                      Fulfilled
-                                    </span>
-                                 ) : (
-                                    <div className="w-full max-w-[120px] mx-auto flex items-center gap-2">
-                                       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${percent}%` }}></div>
-                                       </div>
-                                       <span className="text-xs font-semibold text-gray-500">{Math.round(percent)}%</span>
-                                    </div>
-                                 )}
-                              </td>
+                {!selectedOrderDetails ? (
+                  <>
+                    <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                      Orders & Fulfillment Balances
+                    </h3>
+                    
+                    {backendOrders.length > 0 ? (
+                      <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50/80">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Order No.</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Fulfillment Status</th>
+                              <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {sortedOrders.map(order => {
+                              const fulfillment = orderFulfillment[order.id];
+                              const isComplete = fulfillment.status === 'Fulfilled';
+                              
+                              return (
+                                <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{order.orderNumber}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{order.orderDate}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-center w-[250px]">
+                                    {isComplete ? (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                                          Fully Fulfilled
+                                        </span>
+                                    ) : (
+                                        <div className="w-full mx-auto flex items-center gap-2">
+                                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                              <div className={`h-full rounded-full ${fulfillment.percent > 0 ? 'bg-blue-500' : 'bg-gray-300'}`} style={{ width: `${fulfillment.percent}%` }}></div>
+                                          </div>
+                                          <span className="text-xs font-semibold text-gray-500">{Math.round(fulfillment.percent)}%</span>
+                                        </div>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                                    <button 
+                                      onClick={() => setSelectedOrderDetails(order)} 
+                                      className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-sm"
+                                    >
+                                      View Details
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
+                        <p className="text-sm font-medium text-gray-500">No product orders found to calculate balances.</p>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                   <div className="text-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
-                      <p className="text-sm font-medium text-gray-500">No product orders found to calculate balances.</p>
-                   </div>
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => setSelectedOrderDetails(null)} 
+                          className="p-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg text-gray-600 transition-colors shadow-sm"
+                          title="Back to Orders List"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        </button>
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                          Order Breakdown: <span className="text-blue-600 ml-2">{selectedOrderDetails.orderNumber}</span>
+                        </h3>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-md border border-gray-200">
+                        Date: {selectedOrderDetails.orderDate}
+                      </span>
+                    </div>
+
+                    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50/80">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Name</th>
+                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Quantity</th>
+                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Quantity Fulfilled</th>
+                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Balance Left</th>
+                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {orderFulfillment[selectedOrderDetails.id]?.items.map((item, idx) => {
+                            const isComplete = item.balance <= 0;
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{item.name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-600">{item.ordered} {item.uom}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-blue-600">{item.billed} {item.uom}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                  <span className={`text-sm font-bold ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                    {Math.max(0, item.balance)} {item.uom}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center w-[180px]">
+                                  {isComplete ? (
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                                        Fulfilled
+                                      </span>
+                                  ) : (
+                                      <div className="w-full mx-auto flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.percent}%` }}></div>
+                                        </div>
+                                        <span className="text-xs font-semibold text-gray-500">{Math.round(item.percent)}%</span>
+                                      </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
