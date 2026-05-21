@@ -302,8 +302,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           const parts = String(inv.invoiceNumber || "").split("/");
           return parseInt(parts[2] || "0", 10);
         })
-        .filter((num) => !isNaN(num))
-        .reduce((max, num) => Math.max(max, num), 0);
+        .filter((num: number) => !isNaN(num))
+        .reduce((max: number, num: number) => Math.max(max, num), 0);
 
       const nextNumber = (highestNumber + 1).toString().padStart(3, "0");
       return `${prefix}${nextNumber}`;
@@ -340,7 +340,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             orderRes.data.forEach((order: any) => {
               if (Array.isArray(order.items)) {
                 order.items.forEach((item: any) => {
-                  ordered[item.productName] = (ordered[item.productName] || 0) + item.quantity;
+                  const name = item.productName || item.description; 
+                  if (name) {
+                    ordered[name] = (ordered[name] || 0) + item.quantity;
+                  }
                 });
               }
             });
@@ -381,13 +384,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const productOptionsForClient = useMemo(() => {
     if (invoice.client?.id && Object.keys(orderedProductLimits).length > 0) {
-      return products
-        .filter((p) => orderedProductLimits[p.name] !== undefined)
-        .map((p) => ({
-          value: p.name,
-          label: `${p.name} (Remaining: ${orderedProductLimits[p.name]})`,
-        }));
+      return Object.entries(orderedProductLimits).map(([name, remaining]) => ({
+        value: name,
+        label: `${name} (Remaining: ${remaining})`,
+      }));
     }
+    
     return products.map((p) => ({
       value: p.name,
       label: p.name,
@@ -575,6 +577,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       }));
     }
   }, [sameAsBilling, invoice.client]);
+
+  // --- STATE CODE COMPARISON LOGIC ---
+  const companyStateCode = profile.companyStateCode?.trim().toLowerCase() || "";
+  const clientStateCode = invoice.client?.stateCode?.trim().toLowerCase() || "";
+  // If no client is selected, we default to Intra-State (CGST/SGST active)
+  const isIntraState = !clientStateCode || clientStateCode === companyStateCode;
 
   const handleClientChange = (selectedValue: string) => {
     const selectedClient = clients.find((c) => c.id === selectedValue);
@@ -775,9 +783,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       (acc, item) => acc + item.quantity * item.unitPrice,
       0
     );
-    const cgst = sub * ((invoice.cgstRate || 0) / 100);
-    const sgst = sub * ((invoice.sgstRate || 0) / 100);
-    const igst = sub * ((invoice.igstRate || 0) / 100);
+
+    // Apply intelligent state-code tax logic here
+    const effectiveCgstRate = isIntraState ? (invoice.cgstRate || 0) : 0;
+    const effectiveSgstRate = isIntraState ? (invoice.sgstRate || 0) : 0;
+    const effectiveIgstRate = !isIntraState ? (invoice.igstRate || 0) : 0;
+
+    const cgst = sub * (effectiveCgstRate / 100);
+    const sgst = sub * (effectiveSgstRate / 100);
+    const igst = sub * (effectiveIgstRate / 100);
     const tax = cgst + sgst + igst;
     const grandTotal = sub + tax;
 
@@ -789,6 +803,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const previewData = {
       ...emptyInvoice,
       ...invoice,
+      cgstRate: effectiveCgstRate,
+      sgstRate: effectiveSgstRate,
+      igstRate: effectiveIgstRate,
       items: itemsToProcess,
       id: "invoiceNumber" in invoice ? (invoice as Invoice).id : "preview-id",
       invoiceNumber: fullInvoiceNumber,
@@ -804,7 +821,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       total: grandTotal,
       previewInvoiceData: previewData,
     };
-  }, [invoice, invoiceNumberPrefix, invoiceNumberSequential, emptyInvoice]);
+  }, [invoice, invoiceNumberPrefix, invoiceNumberSequential, emptyInvoice, isIntraState]);
 
   const handleDownloadPdf = async () => {
     try {
@@ -923,9 +940,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           quantity: Number(it.quantity) || 0,
           rate: Number(it.unitPrice) || 0,
         })),
-        cgstRate: (cleanedInvoiceData as any).cgstRate || 0,
-        sgstRate: (cleanedInvoiceData as any).sgstRate || 0,
-        igstRate: (cleanedInvoiceData as any).igstRate || 0,
+        cgstRate: isIntraState ? ((cleanedInvoiceData as any).cgstRate || 0) : 0,
+        sgstRate: isIntraState ? ((cleanedInvoiceData as any).sgstRate || 0) : 0,
+        igstRate: !isIntraState ? ((cleanedInvoiceData as any).igstRate || 0) : 0,
         selectedBankName:
           (cleanedInvoiceData as any).bankDetails?.bankName ||
           profile.defaultBankDetails?.bankName ||
@@ -1007,8 +1024,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             const parts = String(inv.invoiceNumber || "").split("/");
             return parseInt(parts[2] || "0", 10);
           })
-          .filter((num) => !isNaN(num))
-          .reduce((max, num) => Math.max(max, num), 0);
+          .filter((num: number) => !isNaN(num))
+          .reduce((max: number, num: number) => Math.max(max, num), 0);
 
         const currentNumber = parseInt(finalSequential, 10);
         if (!isNaN(currentNumber) && currentNumber <= highestNumber) {
@@ -1025,6 +1042,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
       const invoiceDataForPdf = {
         ...cleanedInvoiceData,
+        cgstRate: isIntraState ? ((cleanedInvoiceData as any).cgstRate || 0) : 0,
+        sgstRate: isIntraState ? ((cleanedInvoiceData as any).sgstRate || 0) : 0,
+        igstRate: !isIntraState ? ((cleanedInvoiceData as any).igstRate || 0) : 0,
         invoiceNumber: fullInvoiceNumber,
         id: "temp-id", 
       } as Invoice;
@@ -1060,9 +1080,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           quantity: Number(it.quantity) || 0,
           rate: Number(it.unitPrice) || 0,
         })),
-        cgstRate: (cleanedInvoiceData as any).cgstRate || 0,
-        sgstRate: (cleanedInvoiceData as any).sgstRate || 0,
-        igstRate: (cleanedInvoiceData as any).igstRate || 0,
+        cgstRate: isIntraState ? ((cleanedInvoiceData as any).cgstRate || 0) : 0,
+        sgstRate: isIntraState ? ((cleanedInvoiceData as any).sgstRate || 0) : 0,
+        igstRate: !isIntraState ? ((cleanedInvoiceData as any).igstRate || 0) : 0,
         selectedBankName:
           (cleanedInvoiceData as any).bankDetails?.bankName ||
           profile.defaultBankDetails?.bankName ||
@@ -1381,11 +1401,11 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       <div className="flex border-b border-black divide-x divide-black bg-gray-100">
          <div className="w-[84%] p-3 flex justify-between items-center">
             <div className="flex gap-4 items-center bg-white p-1.5 rounded border border-gray-300 shadow-sm">
-              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">CGST %</span><input type="number" name="cgstRate" value={invoice.cgstRate || ""} onChange={handleInputChange} className="w-14 border border-gray-300 p-1 rounded-sm text-right font-bold" /></div>
+              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">CGST %</span><input type="number" name="cgstRate" value={isIntraState ? (invoice.cgstRate || "") : 0} onChange={handleInputChange} disabled={!isIntraState} className={`w-14 border border-gray-300 p-1 rounded-sm text-right font-bold ${!isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`} /></div>
               <div className="w-px h-5 bg-gray-300"></div>
-              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">SGST %</span><input type="number" name="sgstRate" value={invoice.sgstRate || ""} onChange={handleInputChange} className="w-14 border border-gray-300 p-1 rounded-sm text-right font-bold" /></div>
+              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">SGST %</span><input type="number" name="sgstRate" value={isIntraState ? (invoice.sgstRate || "") : 0} onChange={handleInputChange} disabled={!isIntraState} className={`w-14 border border-gray-300 p-1 rounded-sm text-right font-bold ${!isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`} /></div>
               <div className="w-px h-5 bg-gray-300"></div>
-              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">IGST %</span><input type="number" name="igstRate" value={invoice.igstRate || ""} onChange={handleInputChange} className="w-14 border border-gray-300 p-1 rounded-sm text-right font-bold" /></div>
+              <div className="flex items-center"><span className="text-gray-600 font-semibold mr-2 text-[10px] uppercase">IGST %</span><input type="number" name="igstRate" value={!isIntraState ? (invoice.igstRate || "") : 0} onChange={handleInputChange} disabled={isIntraState} className={`w-14 border border-gray-300 p-1 rounded-sm text-right font-bold ${isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`} /></div>
             </div>
             <span className="font-black text-sm uppercase tracking-widest">Total</span>
          </div>
@@ -1566,7 +1586,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
          </div>
       </div>
 
-      {/* Box 6: Product table (same product table that we have for default template) */}
+      {/* Box 6: Product table */}
       {renderProductItemsTable()}
 
       {/* Box 7: Below this will be everything same as we have for default template after product */}
@@ -1575,11 +1595,11 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   );
 
   // ========================================================================
-  // REUSABLE SUB-RENDERERS (To eliminate line repetition)
+  // REUSABLE SUB-RENDERERS
   // ========================================================================
   function renderProductItemsTable() {
     return (
-      <div className="border border-black rounded-sm overflow-hidden bg-white">
+      <div className="border border-black rounded-sm bg-white">
         <div className="grid grid-cols-[3fr,14fr,4fr,4fr,4fr,4fr,5fr,2fr] border-b border-black font-bold text-center bg-gray-100 divide-x divide-gray-300 text-xs">
           <div className="p-2">S.NO</div>
           <div className="p-2">DESCRIPTION OF GOODS</div>
@@ -1595,7 +1615,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             <div key={item.id} className="grid grid-cols-[3fr,14fr,4fr,4fr,4fr,4fr,5fr,2fr] items-center divide-x divide-gray-200">
               <div className="text-center p-2 text-gray-500 font-medium">{index + 1}</div>
               <div className="relative p-1">
-                <Combobox value={item.description} onChange={(value: string) => handleItemChange(index, "description", value)} placeholder="Type / search configured catalog product..." options={productOptionsForClient} className="w-full" />
+                <Combobox value={item.description} onChange={(value: string) => handleItemChange(index, "description", value)} placeholder="Type / search product..." options={productOptionsForClient} className="w-full" />
               </div>
               <div className="p-1"><input type="text" placeholder="HSN" value={item.hsnCode || ""} onChange={(e) => handleItemChange(index, "hsnCode", e.target.value)} className="w-full p-1 border border-gray-300 rounded-sm text-center" /></div>
               <div className="p-1"><input type="text" placeholder="UOM" value={item.uom || ""} onChange={(e) => handleItemChange(index, "uom", e.target.value)} className="w-full p-1 border border-gray-300 rounded-sm text-center uppercase" /></div>
@@ -1627,15 +1647,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="p-3 text-sm space-y-1.5 bg-slate-50/10">
             <div className="flex justify-between"><span className="font-semibold text-gray-600">Total Amount before Tax</span> <span className="font-medium text-gray-900">₹{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
             <div className="flex justify-between items-center">
-              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: CGST @</span><input type="number" name="cgstRate" value={invoice.cgstRate || ""} onChange={handleInputChange} className="w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 bg-white" /> %</div>
+              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: CGST @</span><input type="number" name="cgstRate" value={isIntraState ? (invoice.cgstRate || "") : 0} onChange={handleInputChange} disabled={!isIntraState} className={`w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 ${!isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'}`} /> %</div>
               <span className="font-medium text-gray-900">₹{cgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: SGST @</span><input type="number" name="sgstRate" value={invoice.sgstRate || ""} onChange={handleInputChange} className="w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 bg-white" /> %</div>
+              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: SGST @</span><input type="number" name="sgstRate" value={isIntraState ? (invoice.sgstRate || "") : 0} onChange={handleInputChange} disabled={!isIntraState} className={`w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 ${!isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'}`} /> %</div>
               <span className="font-medium text-gray-900">₹{sgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: IGST @</span><input type="number" name="igstRate" value={invoice.igstRate || ""} onChange={handleInputChange} className="w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 bg-white" /> %</div>
+              <div className="flex items-center"><span className="font-semibold w-24 text-gray-600">Add: IGST @</span><input type="number" name="igstRate" value={!isIntraState ? (invoice.igstRate || "") : 0} onChange={handleInputChange} disabled={isIntraState} className={`w-14 p-1 border border-gray-300 text-right rounded shadow-sm focus:ring-1 focus:ring-blue-500 ${isIntraState ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'}`} /> %</div>
               <span className="font-medium text-gray-900">₹{igstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between border-t border-gray-300 pt-1.5"><span className="font-semibold text-gray-600">Total Tax Amount</span> <span className="font-medium text-gray-900">₹{totalTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>

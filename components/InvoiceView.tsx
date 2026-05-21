@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { apiGetInvoiceDetails, apiListBankDetails } from "../utils/api";
+import { apiGetInvoiceDetails, apiListBankDetails, apiUploadInvoicePdf } from "../utils/api";
 import { View } from "../App";
-import { CompanyProfile } from "../types";
+import { CompanyProfile, Invoice } from "../types";
+import { pdf } from "@react-pdf/renderer";
+import DummyPDF from "./DummyPDF";
 
 interface InvoiceViewProps {
   invoiceId: string | number;
@@ -36,6 +38,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [bankBranch, setBankBranch] = useState<string>("");
+  
+  // States for the PDF Upload feature
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,19 +97,139 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
     };
   }, [invoiceId]);
 
+  // Handle PDF Generation and Upload
+  const handleUploadPdf = async () => {
+    if (!data) return;
+    setUploadingPdf(true);
+    setError("");
+    setUploadSuccess(false);
+
+    try {
+      // Map the current detailed data back into the `Invoice` interface expected by DummyPDF
+      const mappedInvoice: Invoice = {
+        id: String(data.id),
+        invoiceNumber: data.invoiceNumber,
+        client: {
+          id: "", // Not strictly needed for PDF generation
+          name: data.billedToName,
+          email: "",
+          address: data.billedToAddress,
+          gstin: data.billedToGstin,
+          state: data.billedToState,
+          stateCode: data.billedToCode,
+        },
+        shippingDetails: data.shippedToName ? {
+          name: data.shippedToName,
+          address: data.shippedToAddress,
+          gstin: data.shippedToGstin,
+          state: data.shippedToState,
+          stateCode: data.shippedToCode,
+        } : undefined,
+        items: data.items,
+        issueDate: data.invoiceDate,
+        dueDate: data.invoiceDate, // Using issue date as fallback
+        status: data.status || "Unpaid",
+        transportMode: data.transportMode,
+        vehicleNo: data.vehicleNo,
+        dateOfSupply: data.dateOfSupply,
+        placeOfSupply: data.placeOfSupply,
+        orderNo: data.orderNumber,
+        taxPayableOnReverseCharge: data.taxOnReverseCharge,
+        cgstRate: data.cgstRate,
+        sgstRate: data.sgstRate,
+        igstRate: data.igstRate,
+        grLrNo: data.grLrNo,
+        eWayBillNo: data.eWayBillNo,
+        bankDetails: {
+          bankName: data.selectedBankName,
+          accountName: data.selectedAccountName,
+          accountNumber: data.selectedAccountNumber,
+          ifsc: data.selectedIfscCode,
+          branch: bankBranch || data.selectedBankBranch || "",
+        },
+        termsAndConditions: data.termsAndConditions,
+        jurisdiction: data.jurisdictionCity || profile.companyState || "",
+      };
+
+      // 1. Generate the PDF Blob locally using @react-pdf/renderer
+      const blob = await pdf(<DummyPDF invoice={mappedInvoice} profile={profile} />).toBlob();
+      
+      // 2. Convert Blob to File object
+      const safeInvoiceNumber = data.invoiceNumber.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const file = new File([blob], `Invoice_${safeInvoiceNumber}.pdf`, { type: "application/pdf" });
+      
+      // 3. Upload to Supabase via our Backend API
+      const response = await apiUploadInvoicePdf(invoiceId, file);
+      
+      // Update local state with the new PDF URL so the link shows up immediately
+      setData(response);
+      
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000); // hide success message after 3 seconds
+    } catch (err: any) {
+      console.error("PDF Upload Error:", err);
+      setError(err.message || "Failed to upload PDF to cloud.");
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
   return (
-    <div
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-    >
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2>
-        <button
-          type="button"
-          onClick={() => setView("invoices")}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          Back
-        </button>
+        <div className="flex items-center gap-3">
+          
+          {/* View Saved PDF Button (If URL exists) */}
+          {data?.pdfUrl && (
+            <a
+              href={data.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              View PDF
+            </a>
+          )}
+
+          {/* Generate & Save PDF Button */}
+          {data && (
+            <button
+              type="button"
+              onClick={handleUploadPdf}
+              disabled={uploadingPdf}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors
+                ${uploadingPdf ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}
+              `}
+            >
+              {uploadingPdf ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Uploading...
+                </>
+              ) : uploadSuccess ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                  Saved to Cloud!
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="m16 16-4-4-4 4"></path></svg>
+                  Save PDF to Cloud
+                </>
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setView("invoices")}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Back
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -111,7 +237,9 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
           {error}
         </div>
       )}
+      
       {loading && <p className="text-sm text-gray-500">Loading…</p>}
+      
       {!loading && data && (
         <div className="border-2 border-black p-4 space-y-2 text-sm">
           {/* Header */}

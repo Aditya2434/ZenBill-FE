@@ -128,6 +128,33 @@ export function apiUpdateInvoice(invoiceId: string | number, payload: any) {
   });
 }
 
+// NEW: Upload PDF specifically for an invoice
+export async function apiUploadInvoicePdf(invoiceId: string | number, file: File) {
+  const url = new URL(`${BASE_URL}/api/v1/invoices/${encodeURIComponent(String(invoiceId))}/upload-pdf`);
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    body: form,
+    credentials: "include", 
+  });
+  
+  const dataText = await res.text();
+  let data: any = undefined;
+  try {
+    data = dataText ? JSON.parse(dataText) : undefined;
+  } catch (_) {
+    data = dataText;
+  }
+  
+  if (!res.ok) {
+    const message = (data && (data.message || data.error)) || res.statusText || "Upload failed";
+    throw new Error(message);
+  }
+  return data && data.data ? data.data : data;
+}
+
 // Company API
 export function apiGetCompany() {
   return request("/api/v1/company");
