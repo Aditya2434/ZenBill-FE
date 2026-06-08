@@ -286,6 +286,7 @@ const App: React.FC = () => {
           sgstRate: 9,
           igstRate: 0,
           grLrNo: "",
+          deliveryNote: "",
           eWayBillNo: "",
           bankDetails: profile.defaultBankDetails,
           termsAndConditions: "",

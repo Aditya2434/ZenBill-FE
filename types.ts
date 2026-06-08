@@ -73,6 +73,7 @@ export interface Invoice {
 
   // Footer details
   grLrNo?: string;
+  deliveryNote?: string;
   eWayBillNo?: string;
   bankDetails?: BankDetails;
   termsAndConditions?: string; // Replaces 'notes'

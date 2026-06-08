@@ -467,7 +467,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
   const totalTax = cgstAmount + sgstAmount + igstAmount;
   const total = subtotal + totalTax;
 
-  const totalRows = 11;
+  const totalRows = 10;
   const rows = Array.from(
     { length: Math.max(invoice.items.length, totalRows) },
     (_, i) => invoice.items[i]
@@ -670,7 +670,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
             </View>
           </View>
 
-          <View style={styles.productTable}>
+          <View style={[styles.productTable, { flexGrow: 1 }]}>
             <View style={[styles.rowHeader, styles.headerRow]}>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.serialNo]}><Text style={[styles.tableCellText, styles.textCenter]}>S.NO</Text></View>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.productName]}><Text style={[styles.tableCellText, styles.textCenter]}>DESCRIPTION OF GOODS</Text></View>
@@ -829,17 +829,17 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
       <Page size="A4" style={stylesTally.page}>
         <View style={stylesTally.container}>
           <View style={[stylesTally.borderBottom, { padding: 12, minHeight: 90, flexDirection: 'row', alignItems: 'center' }]}>
-            <View style={{ width: '25%', alignItems: 'flex-start', justifyContent: 'center' }}>
-              {profile.logo && <Image src={profile.logo} style={{ width: 75, height: 75, objectFit: 'contain' }} />}
+            <View style={{ width: '20%', alignItems: 'flex-start', justifyContent: 'center' }}>
+               {profile.logo && <Image src={profile.logo} style={{ width: 75, height: 75, objectFit: 'contain' }} />}
             </View>
-            <View style={{ width: '50%', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={[stylesTally.bold, { fontSize: 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
-              <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
-              <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
-              {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
-              <Text style={{ marginTop: 3, textAlign: 'center' }}>PAN No.: <Text style={stylesTally.bold}>{profile.pan}</Text> | GSTIN: <Text style={stylesTally.bold}>{profile.gstin}</Text></Text>
+            <View style={{ width: '60%', alignItems: 'center', justifyContent: 'center' }}>
+               <Text style={[stylesTally.bold, { fontSize: profile.companyName.length > 30 ? 11 : profile.companyName.length > 20 ? 13 : 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
+               <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
+               <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
+               {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
+               <Text style={{ marginTop: 3, textAlign: 'center' }}>PAN No.: <Text style={stylesTally.bold}>{profile.pan}</Text> | GSTIN: <Text style={stylesTally.bold}>{profile.gstin}</Text></Text>
             </View>
-            <View style={{ width: '25%', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <View style={{ width: '20%', alignItems: 'flex-end', justifyContent: 'center' }}>
                <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
                   <Text style={{ color: '#aaa', fontSize: 8 }}>QR CODE</Text>
                </View>
@@ -882,40 +882,20 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
                 <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
                   <Text style={stylesTally.label}>Delivery Note</Text>
-                  <Text style={stylesTally.value}>{invoice.grLrNo || "-"}</Text>
+                  <Text style={stylesTally.value}>{invoice.deliveryNote || "-"}</Text>
                 </View>
                 <View style={[{ width: "50%" }, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Mode/Terms of Payment</Text>
-                  <Text style={stylesTally.value}>-</Text>
-                </View>
-              </View>
-              <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Reference No. & Date.</Text>
-                  <Text style={stylesTally.value}>-</Text>
-                </View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Other Reference(s)</Text>
-                  <Text style={stylesTally.value}>-</Text>
-                </View>
-              </View>
-              <View style={[stylesTally.row, stylesTally.borderBottom]}>
-                <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
                   <Text style={stylesTally.label}>Buyer's Order No.</Text>
                   <Text style={stylesTally.value}>{invoice.orderNo || "-"}</Text>
                 </View>
-                <View style={[{ width: "50%" }, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Dated</Text>
-                  <Text style={stylesTally.value}>-</Text>
-                </View>
               </View>
               <View style={[stylesTally.row, stylesTally.borderBottom]}>
                 <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Dispatch Doc No.</Text>
+                  <Text style={stylesTally.label}>E-Way Bill No :</Text>
                   <Text style={stylesTally.value}>{invoice.eWayBillNo || "-"}</Text>
                 </View>
                 <View style={[{ width: "50%" }, stylesTally.p4]}>
-                  <Text style={stylesTally.label}>Delivery Note Date</Text>
+                  <Text style={stylesTally.label}>Delivery Date </Text>
                   <Text style={stylesTally.value}>{invoice.dateOfSupply || "-"}</Text>
                 </View>
               </View>
@@ -956,12 +936,17 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
             <View style={[{ width: "16%" }, stylesTally.p4]}><Text>Amount</Text></View>
           </View>
 
-          <View style={[stylesTally.row, stylesTally.borderBottom, { minHeight: 200 }]}>
+          {(() => {
+            const tallyMaxRows = 8;
+            const tallyRows = Array.from({ length: Math.max(invoice.items.length, tallyMaxRows) }, (_, i) => invoice.items[i]);
+            return null;
+          })()}
+          <View style={[stylesTally.row, stylesTally.borderBottom, { flexGrow: 1 }]}>
             <View style={[{ width: "5%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
-              {invoice.items.map((_, i) => <Text key={i} style={{ marginBottom: 4 }}>{i + 1}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? i + 1 : ''}</Text>)}
             </View>
             <View style={[{ width: "35%" }, stylesTally.borderRight, stylesTally.p4]}>
-              {invoice.items.map((item, i) => <Text key={i} style={[stylesTally.bold, { marginBottom: 4 }]}>{item.description}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={[stylesTally.bold, { marginBottom: 4 }]}>{item ? item.description : ''}</Text>)}
               <View style={{ marginTop: 20 }}>
                  {cgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>CGST:</Text>}
                  {sgstAmount > 0 && <Text style={[stylesTally.textRight, stylesTally.bold]}>SGST:</Text>}
@@ -969,19 +954,19 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
               </View>
             </View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.hsnCode || "-"}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? (item.hsnCode || "-") : ''}</Text>)}
             </View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.quantity}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? item.quantity : ''}</Text>)}
             </View>
             <View style={[{ width: "12%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.unitPrice)}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? formatCurrencyINR(item.unitPrice) : ''}</Text>)}
             </View>
             <View style={[{ width: "8%" }, stylesTally.borderRight, stylesTally.p4, stylesTally.textCenter]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.uom || "-"}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? (item.uom || "-") : ''}</Text>)}
             </View>
             <View style={[{ width: "16%" }, stylesTally.p4, stylesTally.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.quantity * item.unitPrice)}</Text>)}
+              {Array.from({ length: Math.max(invoice.items.length, 8) }, (_, i) => invoice.items[i]).map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item ? formatCurrencyINR(item.quantity * item.unitPrice) : ''}</Text>)}
               <View style={{ marginTop: 20 }}>
                  {cgstAmount > 0 && <Text>{formatCurrencyINR(cgstAmount)}</Text>}
                  {sgstAmount > 0 && <Text>{formatCurrencyINR(sgstAmount)}</Text>}
@@ -1011,33 +996,44 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
              <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2]}><Text>SGST Amount</Text></View>
              <View style={[{ width: "20%" }, stylesTally.p2]}><Text>Total Tax Amount</Text></View>
           </View>
-          <View style={[stylesTally.row, stylesTally.borderBottom]}>
-             <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textCenter]}><Text>As per items</Text></View>
-             <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(subtotal)}</Text></View>
-             <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(cgstAmount)}</Text></View>
-             <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(sgstAmount)}</Text></View>
-             <View style={[{ width: "20%" }, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(totalTax)}</Text></View>
-          </View>
+          {(() => {
+             const hsnGroups: Record<string, { taxableValue: number; cgst: number; sgst: number; totalTax: number }> = {};
+             invoice.items.forEach((item) => {
+               const hsn = item.hsnCode?.trim() || "-";
+               const itemAmount = item.quantity * item.unitPrice;
+               const cgst = itemAmount * ((invoice.cgstRate || 0) / 100);
+               const sgst = itemAmount * ((invoice.sgstRate || 0) / 100);
+               const igst = itemAmount * ((invoice.igstRate || 0) / 100);
+               const tax = cgst + sgst + igst;
+               if (!hsnGroups[hsn]) {
+                 hsnGroups[hsn] = { taxableValue: 0, cgst: 0, sgst: 0, totalTax: 0 };
+               }
+               hsnGroups[hsn].taxableValue += itemAmount;
+               hsnGroups[hsn].cgst += cgst;
+               hsnGroups[hsn].sgst += sgst;
+               hsnGroups[hsn].totalTax += tax;
+             });
+             return Object.entries(hsnGroups).map(([hsn, data]) => (
+               <View key={hsn} style={[stylesTally.row, stylesTally.borderBottom]}>
+                  <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textCenter]}><Text>{hsn}</Text></View>
+                  <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(data.taxableValue)}</Text></View>
+                  <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(data.cgst)}</Text></View>
+                  <View style={[{ width: "20%" }, stylesTally.borderRight, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(data.sgst)}</Text></View>
+                  <View style={[{ width: "20%" }, stylesTally.p2, stylesTally.textRight]}><Text>{formatCurrencyINR(data.totalTax)}</Text></View>
+               </View>
+             ));
+           })()}
 
           <View style={[stylesTally.row, stylesTally.borderBottom]}>
-             <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
+             <View style={[{ width: "100%" }, stylesTally.p4]}>
                 <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Bank Details</Text>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Bank Name</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName || ""}</Text></View>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>A/c No.</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber || ""}</Text></View>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>Branch & IFSC</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch || ""} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc || ""}</Text></View>
-             </View>
-             <View style={[{ width: "50%" }, stylesTally.p4]}>
-                <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Tax Details</Text>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>PAN</Text><Text style={stylesTally.value}>: {profile.pan}</Text></View>
-                <View style={stylesTally.row}><Text style={[{ width: "30%" }, stylesTally.label]}>GSTIN</Text><Text style={stylesTally.value}>: {profile.gstin}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "20%" }, stylesTally.label]}>Bank Name</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName || ""}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "20%" }, stylesTally.label]}>A/c No.</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber || ""}</Text></View>
+                <View style={stylesTally.row}><Text style={[{ width: "20%" }, stylesTally.label]}>Branch & IFSC</Text><Text style={stylesTally.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch || ""} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc || ""}</Text></View>
              </View>
           </View>
 
-          <View style={[stylesTally.row, { flexGrow: 1 }]}>
-             <View style={[{ width: "50%" }, stylesTally.borderRight, stylesTally.p4]}>
-                <Text style={[stylesTally.label, { textDecoration: "underline", marginBottom: 4 }]}>Declaration</Text>
-                <Text style={{ marginTop: 2, lineHeight: 1.3 }}>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</Text>
-             </View>
+          <View style={[stylesTally.row, { flexGrow: 1, justifyContent: 'flex-end' }]}>
              <View style={[{ width: "50%" }, stylesTally.p4, { justifyContent: "space-between" }]}>
                 <Text style={[stylesTally.bold, stylesTally.textRight]}>for {profile.companyName}</Text>
                 {profile.authorizedSignature ? (
@@ -1048,8 +1044,10 @@ function TemplateTallyPDF({ invoice, profile }: DummyPDFProps) {
                 <Text style={[stylesTally.textRight, stylesTally.label]}>Authorised Signatory</Text>
              </View>
           </View>
+          <View style={[stylesTally.row, { borderTopWidth: 1, borderColor: '#000', padding: 2 }]}>
+             <Text style={[stylesTally.textCenter, { width: "100%", fontSize: 7, color: "#555" }]}>This is a Computer Generated Invoice</Text>
+          </View>
         </View>
-        <Text style={[stylesTally.textCenter, { marginTop: 4, fontSize: 7, color: "#888" }]}>This is a Computer Generated Invoice</Text>
       </Page>
     </Document>
   );
@@ -1067,7 +1065,7 @@ function TemplateThreePDF({ invoice, profile }: DummyPDFProps) {
   const totalTax = cgstAmount + sgstAmount + igstAmount;
   const total = subtotal + totalTax;
 
-  const totalRows = 11;
+  const totalRows = 10;
   const rows = Array.from(
     { length: Math.max(invoice.items.length, totalRows) },
     (_, i) => invoice.items[i]
@@ -1249,7 +1247,7 @@ function TemplateThreePDF({ invoice, profile }: DummyPDFProps) {
           </View>
 
           {/* Box 6: Product Table (Identical to default classic template) */}
-          <View style={styles.productTable}>
+          <View style={[styles.productTable, { flexGrow: 1 }]}>
             <View style={[styles.rowHeader, styles.headerRow]}>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.serialNo]}><Text style={[styles.tableCellText, styles.textCenter]}>S.NO</Text></View>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.productName]}><Text style={[styles.tableCellText, styles.textCenter]}>DESCRIPTION OF GOODS</Text></View>
@@ -1376,7 +1374,327 @@ function TemplateThreePDF({ invoice, profile }: DummyPDFProps) {
 
 
 // =========================================================================
-// 5. SMART EXPORT ROUTER
+// TEMPLATE 4 - SIMPLE CLEAN (Minimalist Layout)
+// =========================================================================
+const stylesSimple = StyleSheet.create({
+  page: { padding: 30, fontSize: 10, fontFamily: 'Helvetica', color: '#374151' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  companyName: { fontSize: 22, fontWeight: 'bold', color: '#111827' },
+  companyAddress: { fontSize: 9, color: '#6b7280', marginTop: 2 },
+  logo: { height: 45, width: 45, objectFit: 'contain' },
+  infoRow: { flexDirection: 'row', marginBottom: 30 },
+  billTo: { width: '65%' },
+  invoiceInfo: { width: '35%', alignItems: 'flex-end' },
+  label: { fontSize: 8, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginBottom: 3 },
+  value: { fontSize: 10, fontWeight: 'bold', color: '#1f2937' },
+  valueNormal: { fontSize: 9, color: '#374151' },
+  invoiceNumber: { fontSize: 14, fontWeight: 'bold', fontFamily: 'Courier', color: '#1f2937' },
+  tableContainer: { flexGrow: 1, marginBottom: 10 },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 2, borderColor: '#d1d5db', paddingBottom: 6, marginBottom: 4 },
+  tableHeaderCell: { fontSize: 8, fontWeight: 'bold', color: '#6b7280' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderColor: '#e5e7eb', paddingVertical: 5, minHeight: 18 },
+  descCol: { width: '45%' },
+  qtyCol: { width: '15%', textAlign: 'right' },
+  rateCol: { width: '20%', textAlign: 'right' },
+  totalCol: { width: '20%', textAlign: 'right' },
+  cellText: { fontSize: 9 },
+  totalsContainer: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 },
+  totalsBox: { width: '40%' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  totalLabel: { fontSize: 9, color: '#6b7280' },
+  totalValue: { fontSize: 9 },
+  grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderTopWidth: 2, borderColor: '#d1d5db', marginTop: 4 },
+  grandTotalLabel: { fontSize: 13, fontWeight: 'bold', color: '#111827' },
+  grandTotalValue: { fontSize: 13, fontWeight: 'bold', color: '#111827' },
+  amountWords: { marginBottom: 10 },
+  amountWordsLabel: { fontSize: 8, fontWeight: 'bold', color: '#4b5563', marginBottom: 2 },
+  amountWordsValue: { fontSize: 8, color: '#6b7280' },
+  footer: { borderTopWidth: 0.5, borderColor: '#e5e7eb', paddingTop: 12, flexDirection: 'row', marginTop: 10 },
+  footerLeft: { width: '50%' },
+  footerRight: { width: '50%', alignItems: 'center' },
+  footerTitle: { fontSize: 8, fontWeight: 'bold', color: '#4b5563', marginBottom: 4 },
+  footerText: { fontSize: 8, color: '#6b7280', marginBottom: 1 },
+  sealImg: { width: 55, height: 55, objectFit: 'contain', opacity: 0.7, marginVertical: 4 },
+  signImg: { height: 30, objectFit: 'contain', marginVertical: 4 },
+  signLine: { fontSize: 8, color: '#6b7280', borderTopWidth: 0.5, borderColor: '#e5e7eb', paddingTop: 4, marginTop: 4 },
+});
+
+function TemplateSimplePDF({ invoice, profile }: DummyPDFProps) {
+  const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
+  const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
+  const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
+  const totalTax = cgstAmount + sgstAmount + igstAmount;
+  const total = subtotal + totalTax;
+
+  const maxRows = 12;
+  const rows = Array.from({ length: Math.max(invoice.items.length, maxRows) }, (_, i) => invoice.items[i]);
+
+  return (
+    <Document>
+      <Page size="A4" style={stylesSimple.page}>
+        {/* Header */}
+        <View style={stylesSimple.header}>
+          <View>
+            <Text style={stylesSimple.companyName}>{profile.companyName}</Text>
+            <Text style={stylesSimple.companyAddress}>{profile.companyAddress}</Text>
+          </View>
+          {profile.logo && <Image src={profile.logo} style={stylesSimple.logo} />}
+        </View>
+
+        {/* Bill To & Invoice Info */}
+        <View style={stylesSimple.infoRow}>
+          <View style={stylesSimple.billTo}>
+            <Text style={stylesSimple.label}>Bill To</Text>
+            <Text style={stylesSimple.value}>{invoice.client?.name || ''}</Text>
+            <Text style={stylesSimple.valueNormal}>{invoice.client?.address || ''}</Text>
+          </View>
+          <View style={stylesSimple.invoiceInfo}>
+            <Text style={stylesSimple.label}>Invoice No.</Text>
+            <Text style={stylesSimple.invoiceNumber}>{invoice.invoiceNumber}</Text>
+            <Text style={[stylesSimple.label, { marginTop: 8 }]}>Date</Text>
+            <Text style={stylesSimple.valueNormal}>{invoice.issueDate}</Text>
+          </View>
+        </View>
+
+        {/* Items Table */}
+        <View style={stylesSimple.tableContainer}>
+          <View style={stylesSimple.tableHeader}>
+            <Text style={[stylesSimple.tableHeaderCell, stylesSimple.descCol]}>Description</Text>
+            <Text style={[stylesSimple.tableHeaderCell, stylesSimple.qtyCol]}>Qty</Text>
+            <Text style={[stylesSimple.tableHeaderCell, stylesSimple.rateCol]}>Rate</Text>
+            <Text style={[stylesSimple.tableHeaderCell, stylesSimple.totalCol]}>Total</Text>
+          </View>
+          {rows.map((item, index) => {
+            const hasItem = !!item;
+            const lineTotal = hasItem ? item.quantity * item.unitPrice : 0;
+            return (
+              <View key={hasItem ? (item.id || String(index)) : `empty-${index}`} style={stylesSimple.tableRow}>
+                <Text style={[stylesSimple.cellText, stylesSimple.descCol]}>{hasItem ? item.description : ''}</Text>
+                <Text style={[stylesSimple.cellText, stylesSimple.qtyCol]}>{hasItem ? String(item.quantity) : ''}</Text>
+                <Text style={[stylesSimple.cellText, stylesSimple.rateCol]}>{hasItem ? formatCurrencyINR(item.unitPrice) : ''}</Text>
+                <Text style={[stylesSimple.cellText, stylesSimple.totalCol]}>{hasItem ? formatCurrencyINR(lineTotal) : ''}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Totals */}
+        <View style={stylesSimple.totalsContainer}>
+          <View style={stylesSimple.totalsBox}>
+            <View style={stylesSimple.totalRow}>
+              <Text style={stylesSimple.totalLabel}>Subtotal</Text>
+              <Text style={stylesSimple.totalValue}>{formatCurrencyINR(subtotal)}</Text>
+            </View>
+            <View style={stylesSimple.totalRow}>
+              <Text style={stylesSimple.totalLabel}>Total Tax</Text>
+              <Text style={stylesSimple.totalValue}>{formatCurrencyINR(totalTax)}</Text>
+            </View>
+            <View style={stylesSimple.grandTotalRow}>
+              <Text style={stylesSimple.grandTotalLabel}>Amount Due</Text>
+              <Text style={stylesSimple.grandTotalValue}>{formatCurrencyINR(total)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Amount in Words */}
+        <View style={stylesSimple.amountWords}>
+          <Text style={stylesSimple.amountWordsLabel}>Amount in Words</Text>
+          <Text style={stylesSimple.amountWordsValue}>{numberToWordsINR(total)}</Text>
+        </View>
+
+        {/* Footer */}
+        <View style={stylesSimple.footer}>
+          <View style={stylesSimple.footerLeft}>
+            <Text style={stylesSimple.footerTitle}>Payment Details</Text>
+            <Text style={stylesSimple.footerText}>{invoice.bankDetails?.accountName || ''}</Text>
+            <Text style={stylesSimple.footerText}>A/C: {invoice.bankDetails?.accountNumber || ''}</Text>
+            <Text style={stylesSimple.footerText}>{invoice.bankDetails?.bankName || ''} ({invoice.bankDetails?.ifsc || ''})</Text>
+          </View>
+          <View style={stylesSimple.footerRight}>
+            <Text style={stylesSimple.footerTitle}>For {profile.companyName}</Text>
+            {profile.companySeal ? <Image src={profile.companySeal} style={stylesSimple.sealImg} /> : <View style={{ height: 55 }} />}
+            {profile.authorizedSignature ? <Image src={profile.authorizedSignature} style={stylesSimple.signImg} /> : <View style={{ height: 30 }} />}
+            <Text style={stylesSimple.signLine}>Authorised Signatory</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+
+// =========================================================================
+// TEMPLATE 5 - CREATIVE STUDIO (Bold Modern Layout)
+// =========================================================================
+const stylesCreative = StyleSheet.create({
+  page: { fontSize: 10, fontFamily: 'Helvetica', color: '#374151' },
+  headerBand: { backgroundColor: '#2563EB', padding: 28, paddingBottom: 20 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerCompanyName: { fontSize: 22, fontWeight: 'bold', color: '#FFFFFF' },
+  headerAddress: { fontSize: 9, color: '#BFDBFE', marginTop: 2 },
+  headerInvoiceTitle: { fontSize: 28, fontWeight: 'extralight', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 3 },
+  headerInvoiceNo: { fontSize: 9, color: '#BFDBFE', marginTop: 4, textAlign: 'right' },
+  headerLogo: { height: 35, objectFit: 'contain', marginTop: 10 },
+  main: { padding: 28, flexGrow: 1 },
+  metaRow: { flexDirection: 'row', marginBottom: 25 },
+  metaLeft: { width: '60%' },
+  metaRight: { width: '40%', alignItems: 'flex-end' },
+  metaLabel: { fontSize: 8, fontWeight: 'bold', color: '#6b7280', marginBottom: 2 },
+  metaValue: { fontSize: 10, color: '#1f2937' },
+  metaValueBold: { fontSize: 12, fontWeight: 'bold', color: '#1f2937' },
+  tableContainer: { flexGrow: 1, marginBottom: 10 },
+  tableHeader: { flexDirection: 'row', paddingBottom: 6, marginBottom: 2 },
+  tableHeaderCell: { fontSize: 8, color: '#6b7280' },
+  tableRow: { flexDirection: 'row', borderTopWidth: 0.5, borderColor: '#e5e7eb', paddingVertical: 6, minHeight: 20 },
+  descCol: { width: '45%' },
+  qtyCol: { width: '15%', textAlign: 'right' },
+  rateCol: { width: '20%', textAlign: 'right' },
+  amtCol: { width: '20%', textAlign: 'right' },
+  cellText: { fontSize: 9 },
+  cellTextBold: { fontSize: 10, fontWeight: 'bold', color: '#1f2937' },
+  totalsContainer: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
+  totalsBox: { width: '40%' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  totalLabel: { fontSize: 9, color: '#6b7280' },
+  totalValue: { fontSize: 9 },
+  grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, marginTop: 4 },
+  grandTotalLabel: { fontSize: 18, fontWeight: 'bold', color: '#2563EB' },
+  grandTotalValue: { fontSize: 18, fontWeight: 'bold', color: '#2563EB' },
+  amountWords: { marginTop: 14 },
+  amountWordsLabel: { fontSize: 8, fontWeight: 'bold', color: '#4b5563' },
+  amountWordsValue: { fontSize: 8, color: '#6b7280', textTransform: 'uppercase' },
+  footerBand: { backgroundColor: '#f9fafb', padding: 28, flexDirection: 'row' },
+  footerCol: { width: '33.33%' },
+  footerColCenter: { width: '33.33%', paddingHorizontal: 10 },
+  footerColRight: { width: '33.33%', alignItems: 'center' },
+  footerTitle: { fontSize: 8, fontWeight: 'bold', color: '#374151', marginBottom: 4 },
+  footerText: { fontSize: 8, color: '#6b7280', marginBottom: 1 },
+  sealImg: { width: 55, height: 55, objectFit: 'contain', opacity: 0.7, marginVertical: 3 },
+  signImg: { height: 30, objectFit: 'contain', marginVertical: 3 },
+  signLine: { fontSize: 8, color: '#6b7280', borderTopWidth: 0.5, borderColor: '#e5e7eb', paddingTop: 4, marginTop: 4 },
+});
+
+function TemplateCreativePDF({ invoice, profile }: DummyPDFProps) {
+  const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
+  const sgstAmount = subtotal * ((invoice.sgstRate || 0) / 100);
+  const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
+  const totalTax = cgstAmount + sgstAmount + igstAmount;
+  const total = subtotal + totalTax;
+
+  const maxRows = 12;
+  const rows = Array.from({ length: Math.max(invoice.items.length, maxRows) }, (_, i) => invoice.items[i]);
+
+  return (
+    <Document>
+      <Page size="A4" style={stylesCreative.page}>
+        {/* Blue Header Band */}
+        <View style={stylesCreative.headerBand}>
+          <View style={stylesCreative.headerRow}>
+            <View>
+              <Text style={stylesCreative.headerCompanyName}>{profile.companyName}</Text>
+              <Text style={stylesCreative.headerAddress}>{profile.companyAddress}</Text>
+            </View>
+            <View>
+              <Text style={stylesCreative.headerInvoiceTitle}>Invoice</Text>
+              <Text style={stylesCreative.headerInvoiceNo}>{invoice.invoiceNumber}</Text>
+            </View>
+          </View>
+          {profile.logo && <Image src={profile.logo} style={stylesCreative.headerLogo} />}
+        </View>
+
+        {/* Main Content */}
+        <View style={stylesCreative.main}>
+          {/* Billed To & Dates */}
+          <View style={stylesCreative.metaRow}>
+            <View style={stylesCreative.metaLeft}>
+              <Text style={stylesCreative.metaLabel}>Billed To:</Text>
+              <Text style={stylesCreative.metaValueBold}>{invoice.client?.name || ''}</Text>
+              <Text style={stylesCreative.metaValue}>{invoice.client?.address || ''}</Text>
+            </View>
+            <View style={stylesCreative.metaRight}>
+              <Text style={stylesCreative.metaLabel}>Date of Issue:</Text>
+              <Text style={stylesCreative.metaValue}>{invoice.issueDate}</Text>
+              <Text style={[stylesCreative.metaLabel, { marginTop: 8 }]}>Due Date:</Text>
+              <Text style={stylesCreative.metaValue}>{invoice.dueDate || ''}</Text>
+            </View>
+          </View>
+
+          {/* Items Table */}
+          <View style={stylesCreative.tableContainer}>
+            <View style={stylesCreative.tableHeader}>
+              <Text style={[stylesCreative.tableHeaderCell, stylesCreative.descCol]}>Description</Text>
+              <Text style={[stylesCreative.tableHeaderCell, stylesCreative.qtyCol]}>Qty</Text>
+              <Text style={[stylesCreative.tableHeaderCell, stylesCreative.rateCol]}>Rate</Text>
+              <Text style={[stylesCreative.tableHeaderCell, stylesCreative.amtCol]}>Amount</Text>
+            </View>
+            {rows.map((item, index) => {
+              const hasItem = !!item;
+              const lineTotal = hasItem ? item.quantity * item.unitPrice : 0;
+              return (
+                <View key={hasItem ? (item.id || String(index)) : `empty-${index}`} style={stylesCreative.tableRow}>
+                  <Text style={[stylesCreative.cellTextBold, stylesCreative.descCol]}>{hasItem ? item.description : ''}</Text>
+                  <Text style={[stylesCreative.cellText, stylesCreative.qtyCol]}>{hasItem ? String(item.quantity) : ''}</Text>
+                  <Text style={[stylesCreative.cellText, stylesCreative.rateCol]}>{hasItem ? formatCurrencyINR(item.unitPrice) : ''}</Text>
+                  <Text style={[stylesCreative.cellText, stylesCreative.amtCol]}>{hasItem ? formatCurrencyINR(lineTotal) : ''}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Totals */}
+          <View style={stylesCreative.totalsContainer}>
+            <View style={stylesCreative.totalsBox}>
+              <View style={stylesCreative.totalRow}>
+                <Text style={stylesCreative.totalLabel}>Subtotal</Text>
+                <Text style={stylesCreative.totalValue}>{formatCurrencyINR(subtotal)}</Text>
+              </View>
+              <View style={stylesCreative.totalRow}>
+                <Text style={stylesCreative.totalLabel}>Taxes</Text>
+                <Text style={stylesCreative.totalValue}>{formatCurrencyINR(totalTax)}</Text>
+              </View>
+              <View style={stylesCreative.grandTotalRow}>
+                <Text style={stylesCreative.grandTotalLabel}>Total</Text>
+                <Text style={stylesCreative.grandTotalValue}>{formatCurrencyINR(total)}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Amount in Words */}
+          <View style={stylesCreative.amountWords}>
+            <Text style={stylesCreative.amountWordsLabel}>Amount in Words:</Text>
+            <Text style={stylesCreative.amountWordsValue}>{numberToWordsINR(total)}</Text>
+          </View>
+        </View>
+
+        {/* Gray Footer Band */}
+        <View style={stylesCreative.footerBand}>
+          <View style={stylesCreative.footerCol}>
+            <Text style={stylesCreative.footerTitle}>Bank Details</Text>
+            <Text style={stylesCreative.footerText}>A/C: {invoice.bankDetails?.accountNumber || ''}</Text>
+            <Text style={stylesCreative.footerText}>{invoice.bankDetails?.bankName || ''}</Text>
+            <Text style={stylesCreative.footerText}>IFSC: {invoice.bankDetails?.ifsc || ''}</Text>
+          </View>
+          <View style={stylesCreative.footerColCenter}>
+            <Text style={stylesCreative.footerTitle}>Terms</Text>
+            <Text style={stylesCreative.footerText}>{invoice.termsAndConditions || ''}</Text>
+          </View>
+          <View style={stylesCreative.footerColRight}>
+            <Text style={stylesCreative.footerTitle}>For {profile.companyName}</Text>
+            {profile.companySeal ? <Image src={profile.companySeal} style={stylesCreative.sealImg} /> : <View style={{ height: 55 }} />}
+            {profile.authorizedSignature ? <Image src={profile.authorizedSignature} style={stylesCreative.signImg} /> : <View style={{ height: 30 }} />}
+            <Text style={stylesCreative.signLine}>Authorized Signature</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+
+// =========================================================================
+// SMART EXPORT ROUTER
 // =========================================================================
 export default function DummyPDF(props: DummyPDFProps) {
   let selectedTemplate = props.templateId;
@@ -1385,13 +1703,10 @@ export default function DummyPDF(props: DummyPDFProps) {
     selectedTemplate = localStorage.getItem("zenbill_template") || "default";
   }
 
-  if (selectedTemplate === "tally") {
-    return <TemplateTallyPDF {...props} />;
-  }
-
-  if (selectedTemplate === "template3") {
-    return <TemplateThreePDF {...props} />;
-  }
+  if (selectedTemplate === "tally") return <TemplateTallyPDF {...props} />;
+  if (selectedTemplate === "template3") return <TemplateThreePDF {...props} />;
+  if (selectedTemplate === "simple") return <TemplateSimplePDF {...props} />;
+  if (selectedTemplate === "creative") return <TemplateCreativePDF {...props} />;
 
   return <TemplateDefaultPDF {...props} />;
 }
