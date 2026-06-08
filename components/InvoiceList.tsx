@@ -180,6 +180,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
         sgstRate: Number(d.sgstRate) || 0,
         igstRate: Number(d.igstRate) || 0,
         grLrNo: d.grLrNo || "",
+        deliveryNote: d.deliveryNote || "",
         eWayBillNo: d.ewayBillNo || "",
         bankDetails: {
           accountName: d.selectedAccountName || "",

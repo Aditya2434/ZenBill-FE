@@ -242,11 +242,9 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Invoice No.</div><div className="font-bold text-base mt-1">INV/2026/0001</div></div>
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Dated</div><div className="font-bold text-base mt-1">18-05-2026</div></div>
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Delivery Note</div><div className="font-bold text-base mt-1">-</div></div>
-                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Mode/Terms of Payment</div><div className="font-bold text-base mt-1">-</div></div>
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Buyer's Order No.</div><div className="font-bold text-base mt-1">ORD-00000</div></div>
-                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Dated</div><div className="font-bold text-base mt-1">-</div></div>
-                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Dispatch Doc No.</div><div className="font-bold text-base mt-1">-</div></div>
-                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Delivery Note Date</div><div className="font-bold text-base mt-1">-</div></div>
+                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">E-Way Bill No :</div><div className="font-bold text-base mt-1">-</div></div>
+                  <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Delivery Date </div><div className="font-bold text-base mt-1">-</div></div>
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Dispatched through</div><div className="font-bold text-base mt-1">Road</div></div>
                   <div className="p-3 flex flex-col justify-center"><div className="text-gray-600 text-[11px] uppercase font-bold">Destination</div><div className="font-bold text-base mt-1">City</div></div>
                 </div>
@@ -300,13 +298,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
               </div>
 
               {/* Declaration / Auth */}
-              <div className="flex divide-x divide-black shrink-0 min-h-[130px]">
-                 <div className="w-1/2 p-4 flex flex-col justify-between">
-                    <div>
-                       <div className="font-bold uppercase tracking-wider underline mb-2">Declaration</div>
-                       <div>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
-                    </div>
-                 </div>
+              <div className="flex shrink-0 min-h-[130px] justify-end">
                  <div className="w-1/2 p-4 flex flex-col justify-between items-end">
                     <div className="font-bold text-base">for YOUR COMPANY NAME CO.</div>
                     <div className="font-bold uppercase text-gray-600">Authorised Signatory</div>

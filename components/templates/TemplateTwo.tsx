@@ -90,13 +90,13 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
           {/* 1. Header (Logo Left, Center Details, QR Right) */}
           <View style={[styles.borderBottom, { padding: 12, minHeight: 90, flexDirection: 'row', alignItems: 'center' }]}>
             {/* Left Side: Logo */}
-            <View style={{ width: '25%', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <View style={{ width: '20%', alignItems: 'flex-start', justifyContent: 'center' }}>
               {profile.logo && <Image src={profile.logo} style={{ width: 75, height: 75, objectFit: 'contain' }} />}
             </View>
 
             {/* Centered Company Details */}
-            <View style={{ width: '50%', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={[styles.bold, { fontSize: 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
+            <View style={{ width: '60%', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={[styles.bold, { fontSize: profile.companyName.length > 30 ? 11 : profile.companyName.length > 20 ? 13 : 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
               <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
               <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
               {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
@@ -104,7 +104,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
             </View>
 
             {/* Right Side: QR Code */}
-            <View style={{ width: '25%', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <View style={{ width: '20%', alignItems: 'flex-end', justifyContent: 'center' }}>
                <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
                   <Text style={{ color: '#aaa', fontSize: 8 }}>QR CODE</Text>
                </View>
@@ -151,40 +151,20 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
               <View style={[styles.row, styles.borderBottom]}>
                 <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                   <Text style={styles.label}>Delivery Note</Text>
-                  <Text style={styles.value}>{invoice.grLrNo || "-"}</Text>
+                  <Text style={styles.value}>{invoice.deliveryNote || "-"}</Text>
                 </View>
                 <View style={[{ width: "50%" }, styles.p4]}>
-                  <Text style={styles.label}>Mode/Terms of Payment</Text>
-                  <Text style={styles.value}>-</Text>
-                </View>
-              </View>
-              <View style={[styles.row, styles.borderBottom]}>
-                <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
-                  <Text style={styles.label}>Reference No. & Date.</Text>
-                  <Text style={styles.value}>-</Text>
-                </View>
-                <View style={[{ width: "50%" }, styles.p4]}>
-                  <Text style={styles.label}>Other Reference(s)</Text>
-                  <Text style={styles.value}>-</Text>
-                </View>
-              </View>
-              <View style={[styles.row, styles.borderBottom]}>
-                <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
                   <Text style={styles.label}>Buyer's Order No.</Text>
                   <Text style={styles.value}>{invoice.orderNo || "-"}</Text>
                 </View>
-                <View style={[{ width: "50%" }, styles.p4]}>
-                  <Text style={styles.label}>Dated</Text>
-                  <Text style={styles.value}>-</Text>
-                </View>
               </View>
               <View style={[styles.row, styles.borderBottom]}>
                 <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
-                  <Text style={styles.label}>Dispatch Doc No.</Text>
+                  <Text style={styles.label}>E-Way Bill No :</Text>
                   <Text style={styles.value}>{invoice.eWayBillNo || "-"}</Text>
                 </View>
                 <View style={[{ width: "50%" }, styles.p4]}>
-                  <Text style={styles.label}>Delivery Note Date</Text>
+                  <Text style={styles.label}>Delivery Date </Text>
                   <Text style={styles.value}>{invoice.dateOfSupply || "-"}</Text>
                 </View>
               </View>
@@ -292,35 +272,46 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
              <View style={[{ width: "20%" }, styles.borderRight, styles.p2]}><Text>SGST Amount</Text></View>
              <View style={[{ width: "20%" }, styles.p2]}><Text>Total Tax Amount</Text></View>
           </View>
-          <View style={[styles.row, styles.borderBottom]}>
-             <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textCenter]}><Text>As per items</Text></View>
-             <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(subtotal)}</Text></View>
-             <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(cgstAmount)}</Text></View>
-             <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(sgstAmount)}</Text></View>
-             <View style={[{ width: "20%" }, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(totalTax)}</Text></View>
-          </View>
+          {(() => {
+             const hsnGroups: Record<string, { taxableValue: number; cgst: number; sgst: number; totalTax: number }> = {};
+             invoice.items.forEach((item) => {
+               const hsn = item.hsnCode?.trim() || "-";
+               const itemAmount = item.quantity * item.unitPrice;
+               const cgst = itemAmount * ((invoice.cgstRate || 0) / 100);
+               const sgst = itemAmount * ((invoice.sgstRate || 0) / 100);
+               const igst = itemAmount * ((invoice.igstRate || 0) / 100);
+               const tax = cgst + sgst + igst;
+               if (!hsnGroups[hsn]) {
+                 hsnGroups[hsn] = { taxableValue: 0, cgst: 0, sgst: 0, totalTax: 0 };
+               }
+               hsnGroups[hsn].taxableValue += itemAmount;
+               hsnGroups[hsn].cgst += cgst;
+               hsnGroups[hsn].sgst += sgst;
+               hsnGroups[hsn].totalTax += tax;
+             });
+             return Object.entries(hsnGroups).map(([hsn, data]) => (
+               <View key={hsn} style={[styles.row, styles.borderBottom]}>
+                  <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textCenter]}><Text>{hsn}</Text></View>
+                  <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(data.taxableValue)}</Text></View>
+                  <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(data.cgst)}</Text></View>
+                  <View style={[{ width: "20%" }, styles.borderRight, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(data.sgst)}</Text></View>
+                  <View style={[{ width: "20%" }, styles.p2, styles.textRight]}><Text>{formatCurrencyINR(data.totalTax)}</Text></View>
+               </View>
+             ));
+           })()}
 
           {/* 9. Bank Details Row */}
           <View style={[styles.row, styles.borderBottom]}>
-             <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
+             <View style={[{ width: "100%" }, styles.p4]}>
                 <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Bank Details</Text>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Bank Name</Text><Text style={styles.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName}</Text></View>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>A/c No.</Text><Text style={styles.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber}</Text></View>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>Branch & IFSC</Text><Text style={styles.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc}</Text></View>
-             </View>
-             <View style={[{ width: "50%" }, styles.p4]}>
-                <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Company's Tax Details</Text>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>PAN</Text><Text style={styles.value}>: {profile.pan}</Text></View>
-                <View style={styles.row}><Text style={[{ width: "30%" }, styles.label]}>GSTIN</Text><Text style={styles.value}>: {profile.gstin}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "20%" }, styles.label]}>Bank Name</Text><Text style={styles.value}>: {invoice.bankDetails?.bankName || profile.defaultBankDetails?.bankName}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "20%" }, styles.label]}>A/c No.</Text><Text style={styles.value}>: {invoice.bankDetails?.accountNumber || profile.defaultBankDetails?.accountNumber}</Text></View>
+                <View style={styles.row}><Text style={[{ width: "20%" }, styles.label]}>Branch & IFSC</Text><Text style={styles.value}>: {invoice.bankDetails?.branch || profile.defaultBankDetails?.branch} & {invoice.bankDetails?.ifsc || profile.defaultBankDetails?.ifsc}</Text></View>
              </View>
           </View>
 
-          {/* 10. Final Declaration & Signature Row */}
-          <View style={[styles.row, { flexGrow: 1 }]}>
-             <View style={[{ width: "50%" }, styles.borderRight, styles.p4]}>
-                <Text style={[styles.label, { textDecoration: "underline", marginBottom: 4 }]}>Declaration</Text>
-                <Text style={{ marginTop: 2, lineHeight: 1.3 }}>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</Text>
-             </View>
+          {/* 10. Final Signature Row */}
+          <View style={[styles.row, { flexGrow: 1, justifyContent: 'flex-end' }]}>
              <View style={[{ width: "50%" }, styles.p4, { justifyContent: "space-between" }]}>
                 <Text style={[styles.bold, styles.textRight]}>for {profile.companyName}</Text>
                 {profile.authorizedSignature ? (
@@ -331,9 +322,10 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
                 <Text style={[styles.textRight, styles.label]}>Authorised Signatory</Text>
              </View>
           </View>
-
+          <View style={[styles.row, { borderTopWidth: 1, borderColor: '#000', padding: 2 }]}>
+             <Text style={[styles.textCenter, { width: "100%", fontSize: 7, color: "#555" }]}>This is a Computer Generated Invoice</Text>
+          </View>
         </View>
-        <Text style={[styles.textCenter, { marginTop: 4, fontSize: 7, color: "#888" }]}>This is a Computer Generated Invoice</Text>
       </Page>
     </Document>
   );

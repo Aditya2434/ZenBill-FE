@@ -217,6 +217,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       sgstRate: 9,
       igstRate: 0,
       grLrNo: "",
+      deliveryNote: "",
       eWayBillNo: "",
       bankDetails: profile.defaultBankDetails,
       termsAndConditions:
@@ -255,6 +256,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("default");
   const [orderedProductLimits, setOrderedProductLimits] = useState<Record<string, number>>({});
+
+  const MAX_ITEMS_PER_TEMPLATE: Record<string, number> = {
+    default: 10,
+    tally: 8,
+    template3: 10,
+    simple: 12,
+    creative: 12,
+  };
+  const maxItems = MAX_ITEMS_PER_TEMPLATE[selectedTemplateId] || 10;
 
   useEffect(() => {
     const savedTemplate = localStorage.getItem("zenbill_template");
@@ -697,6 +707,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const addItem = () => {
+    if (invoice.items.length >= maxItems) {
+      showToast(`Maximum ${maxItems} items allowed for this template layout`, "error");
+      return;
+    }
     setInvoice({
       ...invoice,
       items: [
@@ -919,6 +933,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         taxOnReverseCharge:
           (cleanedInvoiceData as any).taxPayableOnReverseCharge || false,
         grLrNo: (cleanedInvoiceData as any).grLrNo || null,
+        deliveryNote: (cleanedInvoiceData as any).deliveryNote || null,
         billedToName: (cleanedInvoiceData as any).client?.name || "",
         billedToAddress: (cleanedInvoiceData as any).client?.address || "",
         billedToGstin: (cleanedInvoiceData as any).client?.gstin || "",
@@ -1059,6 +1074,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         taxOnReverseCharge:
           (cleanedInvoiceData as any).taxPayableOnReverseCharge || false,
         grLrNo: (cleanedInvoiceData as any).grLrNo || null,
+        deliveryNote: (cleanedInvoiceData as any).deliveryNote || null,
         billedToName: (cleanedInvoiceData as any).client?.name || "",
         billedToAddress: (cleanedInvoiceData as any).client?.address || "",
         billedToGstin: (cleanedInvoiceData as any).client?.gstin || "",
@@ -1312,34 +1328,18 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </div>
             <div className="p-2 flex flex-col justify-center">
                <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Delivery Note</p>
-               <input name="grLrNo" value={invoice.grLrNo} onChange={handleInputChange} className="w-full border border-gray-300 p-1 mt-1 rounded-sm outline-none" />
-            </div>
-            <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Mode/Terms of Payment</p>
-               <input className="w-full border border-gray-200 p-1 mt-1 rounded-sm bg-gray-100 text-gray-400 cursor-not-allowed" disabled value="-" />
-            </div>
-            <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Reference No. & Date.</p>
-               <input className="w-full border border-gray-200 p-1 mt-1 rounded-sm bg-gray-100 text-gray-400 cursor-not-allowed" disabled value="-" />
-            </div>
-            <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Other Reference(s)</p>
-               <input className="w-full border border-gray-200 p-1 mt-1 rounded-sm bg-gray-100 text-gray-400 cursor-not-allowed" disabled value="-" />
+               <input name="deliveryNote" value={invoice.deliveryNote || ""} onChange={handleInputChange} className="w-full border border-gray-300 p-1 mt-1 rounded-sm outline-none" />
             </div>
             <div className="p-2 flex flex-col justify-center">
                <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Buyer's Order No.</p>
                <input name="orderNo" value={invoice.orderNo} onChange={handleInputChange} className="w-full border border-gray-300 p-1 mt-1 rounded-sm outline-none" />
             </div>
             <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Dated</p>
-               <input className="w-full border border-gray-200 p-1 mt-1 rounded-sm bg-gray-100 text-gray-400 cursor-not-allowed" disabled value="-" />
-            </div>
-            <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Dispatch Doc No.</p>
+               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">E-Way Bill No :</p>
                <input name="eWayBillNo" value={invoice.eWayBillNo} onChange={handleInputChange} className="w-full border border-gray-300 p-1 mt-1 rounded-sm outline-none" />
             </div>
             <div className="p-2 flex flex-col justify-center">
-               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Delivery Note Date</p>
+               <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Delivery Date </p>
                <input type="date" name="dateOfSupply" value={invoice.dateOfSupply} onChange={handleInputChange} className="w-full border border-gray-300 p-1 mt-1 rounded-sm outline-none" />
             </div>
             <div className="p-2 flex flex-col justify-center">
@@ -1422,34 +1422,54 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
       <div className="flex border-b border-black divide-x divide-black bg-gray-100 font-bold text-center text-[10px]">
           <div className="w-[20%] p-1.5 py-2">HSN/SAC</div><div className="w-[20%] p-1.5 py-2">Taxable Value</div><div className="w-[20%] p-1.5 py-2">CGST Amount</div><div className="w-[20%] p-1.5 py-2">SGST Amount</div><div className="w-[20%] p-1.5 py-2">Total Tax Amount</div>
       </div>
-      <div className="flex border-b border-black divide-x divide-black text-center text-[11px] items-center">
-          <div className="w-[20%] p-2 font-medium">As per items</div>
-          <div className="w-[20%] p-2 text-right">₹{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          <div className="w-[20%] p-2 text-right">₹{cgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          <div className="w-[20%] p-2 text-right">₹{sgstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          <div className="w-[20%] p-2 text-right font-bold bg-gray-50">₹{totalTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      </div>
+      {(() => {
+         const hsnGroups: Record<string, { taxableValue: number; cgst: number; sgst: number; totalTax: number }> = {};
+         invoice.items.forEach((item) => {
+           const hsn = item.hsnCode?.trim() || "-";
+           const itemAmount = item.quantity * item.unitPrice;
+           const cgst = itemAmount * ((invoice.cgstRate || 0) / 100);
+           const sgst = itemAmount * ((invoice.sgstRate || 0) / 100);
+           const igst = itemAmount * ((invoice.igstRate || 0) / 100);
+           const tax = cgst + sgst + igst;
+           if (!hsnGroups[hsn]) {
+             hsnGroups[hsn] = { taxableValue: 0, cgst: 0, sgst: 0, totalTax: 0 };
+           }
+           hsnGroups[hsn].taxableValue += itemAmount;
+           hsnGroups[hsn].cgst += cgst;
+           hsnGroups[hsn].sgst += sgst;
+           hsnGroups[hsn].totalTax += tax;
+         });
+         return Object.entries(hsnGroups).map(([hsn, data]) => (
+            <div key={hsn} className="flex border-b border-black divide-x divide-black text-center text-[11px] items-center">
+                <div className="w-[20%] p-2 font-medium">{hsn}</div>
+                <div className="w-[20%] p-2 text-right">₹{data.taxableValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="w-[20%] p-2 text-right">₹{data.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="w-[20%] p-2 text-right">₹{data.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="w-[20%] p-2 text-right font-bold bg-gray-50">₹{data.totalTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+         ));
+      })()}
 
-      <div className="flex border-b border-black divide-x divide-black bg-gray-50/30">
-         <div className="w-1/2 p-4">
+      <div className="flex border-b border-black bg-gray-50/30">
+         <div className="w-full p-4">
             <p className="font-bold uppercase tracking-wider text-[10px] text-gray-600 mb-3 border-b border-gray-300 pb-1 inline-block">Company's Bank Details</p>
             {bankDetailsList.length > 0 && (
-              <div className="mb-3"><Dropdown value={selectedBankId} onChange={(selectedId: string) => {
-                setSelectedBankId(selectedId);
-                const selectedBank = bankDetailsList.find((bd) => String(bd.id) === selectedId);
-                if (selectedBank) {
-                  setInvoice((prev) => ({
-                    ...prev,
-                    bankDetails: {
-                      accountName: selectedBank.accountName ?? selectedBank.account_name ?? "",
-                      accountNumber: selectedBank.accountNumber ?? selectedBank.account_number ?? "",
-                      bankName: selectedBank.bankName ?? selectedBank.bank_name ?? "",
-                      branch: selectedBank.bankBranch ?? selectedBank.branch ?? "",
-                      ifsc: selectedBank.ifscCode ?? selectedBank.ifsc ?? "",
-                    }
-                  }));
-                }
-              }} placeholder="Select bank" options={bankDetailsList.map((bd) => ({ value: String(bd.id), label: `${bd.bankName} - ${bd.accountNumber}` }))} searchable={true} /></div>
+               <div className="mb-3"><Dropdown value={selectedBankId} onChange={(selectedId: string) => {
+                 setSelectedBankId(selectedId);
+                 const selectedBank = bankDetailsList.find((bd) => String(bd.id) === selectedId);
+                 if (selectedBank) {
+                   setInvoice((prev) => ({
+                     ...prev,
+                     bankDetails: {
+                       accountName: selectedBank.accountName ?? selectedBank.account_name ?? "",
+                       accountNumber: selectedBank.accountNumber ?? selectedBank.account_number ?? "",
+                       bankName: selectedBank.bankName ?? selectedBank.bank_name ?? "",
+                       branch: selectedBank.bankBranch ?? selectedBank.branch ?? "",
+                       ifsc: selectedBank.ifscCode ?? selectedBank.ifsc ?? "",
+                     }
+                   }));
+                 }
+               }} placeholder="Select bank" options={bankDetailsList.map((bd) => ({ value: String(bd.id), label: `${bd.bankName} - ${bd.accountNumber}` }))} searchable={true} /></div>
             )}
             <div className="grid grid-cols-[100px_1fr] gap-y-2 items-center text-xs">
                <span className="text-gray-600 font-semibold">Bank Name</span><input name="bankName" value={invoice.bankDetails?.bankName || ""} onChange={(e) => handleNestedChange("bankDetails", e)} className="border border-gray-300 p-1" />
@@ -1462,20 +1482,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                </div>
             </div>
          </div>
-         <div className="w-1/2 p-4">
-            <p className="font-bold uppercase tracking-wider text-[10px] text-gray-600 mb-3 border-b border-gray-300 pb-1 inline-block">Company's Tax Details</p>
-            <div className="grid grid-cols-[100px_1fr] gap-y-3 text-sm">
-               <span className="text-gray-600 font-semibold">PAN</span><span className="font-black tracking-widest">{profile.pan}</span>
-               <span className="text-gray-600 font-semibold">GSTIN</span><span className="font-black tracking-widest">{profile.gstin}</span>
-            </div>
-         </div>
       </div>
 
-      <div className="flex divide-x divide-black bg-white">
-         <div className="w-1/2 p-4 flex flex-col">
-            <p className="font-bold uppercase tracking-wider text-[10px] text-gray-600 mb-2 border-b border-gray-300 pb-1 inline-block">Declaration</p>
-            <textarea name="termsAndConditions" value={invoice.termsAndConditions} onChange={handleInputChange} rows={4} className="w-full border border-gray-300 p-2 text-[11px]" />
-         </div>
+      <div className="flex bg-white justify-end">
          <div className="w-1/2 p-4 flex flex-col justify-between items-end">
             <p className="font-bold text-sm">for {profile.companyName}</p>
             {profile.authorizedSignature ? (
@@ -1629,7 +1638,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           ))}
         </div>
         <div className="p-2 bg-gray-50 border-t border-gray-200 flex justify-start">
-          <button type="button" onClick={addItem} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"><PlusIcon className="mr-1 w-4 h-4" /> Add Next Item Row</button>
+          <button type="button" onClick={addItem} disabled={invoice.items.length >= maxItems} className={`inline-flex items-center px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors ${invoice.items.length >= maxItems ? 'opacity-50 cursor-not-allowed' : ''}`}><PlusIcon className="mr-1 w-4 h-4" /> Add Item ({invoice.items.length}/{maxItems})</button>
         </div>
       </div>
     );
@@ -1753,7 +1762,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
                  <div>
                     <h3 className="text-lg font-bold text-slate-800">Final PDF Preview</h3>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mt-0.5">Layout: {selectedTemplateId === 'tally' ? 'Tally ERP' : selectedTemplateId === 'template3' ? 'Professional' : 'Default Standard'}</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mt-0.5">Layout: {selectedTemplateId === 'tally' ? 'Tally ERP' : selectedTemplateId === 'template3' ? 'Professional' : selectedTemplateId === 'simple' ? 'Simple Clean' : selectedTemplateId === 'creative' ? 'Creative Studio' : 'Default Standard'}</p>
                  </div>
               </div>
               <div className="flex items-center space-x-3">
