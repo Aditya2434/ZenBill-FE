@@ -249,7 +249,7 @@ const TemplateModal: React.FC<{
             return (
               <>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-2">Your Custom Templates</p>
-                <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                   {custom.map(ct => (
                     <div key={ct.id}
                       onClick={() => setLocalSelected(ct.id)}
@@ -297,7 +297,7 @@ const TemplateModal: React.FC<{
           })()}
           {/* Built-in Templates */}
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Built-in Templates</p>
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {TEMPLATES.map(tpl => (
               <div key={tpl.id}
                 onClick={() => setLocalSelected(tpl.id)}

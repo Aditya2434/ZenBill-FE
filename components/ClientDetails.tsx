@@ -669,6 +669,21 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                   columns={[
                     { header: "Order ID", accessor: "orderNumber", className: "font-mono font-semibold text-blue-700 text-xs" },
                     { header: "Date", accessor: "orderDate", className: "text-gray-600 font-medium" },
+                    {
+                      header: "Type",
+                      accessor: (order) => {
+                        const isAuto = order.status === "AUTO_GENERATED";
+                        return isAuto ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
+                            <span>🤖</span> AUTO GENERATED
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
+                            <span>📋</span> MANUAL ORDER
+                          </span>
+                        );
+                      }
+                    },
                     { 
                       header: "Products Requested", 
                       accessor: (order) => (
@@ -681,10 +696,6 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                           ))}
                         </div>
                       ) 
-                    },
-                    { 
-                      header: "Status",
-                      accessor: (order) => <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-yellow-100 text-yellow-800 border border-yellow-200">{order.status || "Pending"}</span>
                     },
                     {
                       header: "Actions",
