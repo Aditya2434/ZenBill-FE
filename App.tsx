@@ -3,7 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { InvoiceList } from "./components/InvoiceList";
-import { InvoiceForm } from "./components/InvoiceForm";
+import { InvoiceWizard } from "./components/InvoiceWizard";
 import { Profile } from "./components/Profile";
 import { ClientManager } from "./components/ClientManager";
 import { ProductManager } from "./components/ProductManager";
@@ -59,6 +59,8 @@ const App: React.FC = () => {
   const [clientIdForDetails, setClientIdForDetails] = useState<string | null>(() => {
     return sessionStorage.getItem("zenbill_clientIdForDetails") || null;
   });
+
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const { profile, updateProfile } = useProfile();
@@ -138,18 +140,19 @@ const App: React.FC = () => {
         );
       case "create-invoice":
         return (
-          <InvoiceForm
+          <InvoiceWizard
             addInvoice={handleAddInvoice}
             setView={handleSetView}
             profile={profile}
             invoices={invoices}
             clients={clients}
             products={products}
+            addClient={addClient}
           />
         );
       case "edit-invoice":
         return invoiceToEdit ? (
-          <InvoiceForm
+          <InvoiceWizard
             existingInvoice={invoiceToEdit}
             updateInvoice={updateInvoice}
             setView={handleSetView}
@@ -157,6 +160,7 @@ const App: React.FC = () => {
             invoices={invoices}
             clients={clients}
             products={products}
+            addClient={addClient}
           />
         ) : (
           <InvoiceList
@@ -313,10 +317,50 @@ const App: React.FC = () => {
         element={
           <RequireAuth>
             <div className="flex h-screen bg-gray-50 text-gray-800 font-sans">
-              <Sidebar currentView={currentView} setView={handleSetView} userEmail={userEmail} />
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <Header setView={handleSetView} />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8">
+              {/* Desktop Sidebar */}
+              <div className="hidden lg:flex lg:flex-shrink-0">
+                <Sidebar currentView={currentView} setView={handleSetView} userEmail={userEmail} />
+              </div>
+
+              {/* Mobile Sidebar Drawer */}
+              {mobileSidebarOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden flex">
+                  {/* Backdrop */}
+                  <div
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300"
+                    onClick={() => setMobileSidebarOpen(false)}
+                  />
+
+                  {/* Drawer Content */}
+                  <div className="relative flex-1 flex flex-col max-w-[280px] w-full bg-slate-50 border-r border-slate-200 z-50 animate-fade-in-right">
+                    {/* Close Button */}
+                    <div className="absolute top-4 right-4 z-50">
+                      <button
+                        onClick={() => setMobileSidebarOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200/60 focus:outline-none"
+                      >
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <Sidebar
+                      currentView={currentView}
+                      setView={(v) => {
+                        handleSetView(v);
+                        setMobileSidebarOpen(false);
+                      }}
+                      userEmail={userEmail}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Main Content Area */}
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                <Header setView={handleSetView} onMenuClick={() => setMobileSidebarOpen(true)} />
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 lg:p-8">
                   {renderContent()}
                 </main>
               </div>

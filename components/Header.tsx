@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   setView: (view: View) => void;
+  onMenuClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ setView }) => {
+export const Header: React.FC<HeaderProps> = ({ setView, onMenuClick }) => {
   const { userEmail, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +19,18 @@ export const Header: React.FC<HeaderProps> = ({ setView }) => {
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-      <div className="flex items-center">
+      <div className="flex items-center space-x-3">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 lg:hidden focus:outline-none"
+            aria-label="Open sidebar"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         {userEmail && (
           <span className="text-sm text-gray-600">
             Welcome, <span className="font-medium">{userEmail}</span>

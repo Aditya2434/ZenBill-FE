@@ -328,9 +328,11 @@ const SmartTable: React.FC<SmartTableProps> = ({ initialData, onChange, printMod
               <th className="px-3 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right border-b-2 border-gray-200 w-28">
                 <div className="flex items-center justify-end gap-1">
                   Amount (₹)
-                  <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Auto-calculated">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                  <span title="Auto-calculated" className="inline-flex">
+                    <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </span>
                 </div>
               </th>
               <th className="w-10 border-b-2 border-gray-200" />

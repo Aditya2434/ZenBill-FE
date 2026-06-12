@@ -252,6 +252,14 @@ const QuotationEditor: React.FC<QuotationEditorProps> = ({
             transition: all 0.2s ease-out;
             ${borderStyle !== 'none' ? `border: ${borderStyle} !important; box-sizing: border-box;` : ''}
           }
+          @media (max-width: 800px) {
+            .jodit-wysiwyg {
+              width: 100% !important;
+              min-height: auto !important;
+              padding: 16px !important;
+              transform: none !important;
+            }
+          }
           /* Fix for Jodit fullsize mode with our scaling */
           .jodit_fullsize .jodit-workplace {
             padding: 0 !important;
