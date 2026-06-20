@@ -41,6 +41,26 @@ function numberToWordsINR(num: number): string {
     return res.trim().replace(/\s\s+/g, ' ') + ' RUPEES ONLY.';
 }
 
+function formatDateDDMMYYYY(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  // Handle YYYY-MM-DD
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  // Handle YYYYMMDD
+  const compactMatch = dateStr.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compactMatch) return `${compactMatch[3]}/${compactMatch[2]}/${compactMatch[1]}`;
+  return dateStr;
+}
+
+function getCompanyNameFontSize(name: string): string {
+  const len = (name || "").length;
+  if (len <= 20) return "2.25rem";
+  if (len <= 30) return "1.85rem";
+  if (len <= 40) return "1.5rem";
+  if (len <= 50) return "1.25rem";
+  return "1.05rem";
+}
+
 interface TemplateProps {
   invoice: Invoice;
   profile: CompanyProfile;
@@ -52,9 +72,9 @@ interface TemplateProps {
   total: number;
 }
 
-const FormFieldPreview = ({ label, value, fullWidth = false }: { label: string; value: any; fullWidth?: boolean }) => (
+const FormFieldPreview = ({ label, value, fullWidth = false, labelWidth = "w-1/3" }: { label: string; value: any; fullWidth?: boolean; labelWidth?: string }) => (
     <div className={`flex items-start ${fullWidth ? 'w-full' : ''}`}>
-        <span className="w-1/3 text-sm font-semibold">{label}</span>
+        <span className={`${labelWidth} text-sm font-semibold`}>{label}</span>
         <span className="px-2">:</span>
         <span className="flex-grow text-sm break-words">{value || '-'}</span>
     </div>
@@ -66,9 +86,9 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
         <div ref={ref} className="bg-white p-4 text-gray-900" style={{ width: '800px', fontFamily: "'Inter', sans-serif", letterSpacing: '0.2px' }}>
              <div className="border-2 border-black p-4 space-y-2 text-sm">
                 {/* Header */}
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center pt-2">
                     {/* Section 1: Logo */}
-                    <div className="company-logo" style={{ width: '84px', flexShrink: 0 }}>
+                    <div className="company-logo flex-shrink-0" style={{ width: '80px', height: '80px' }}>
                         {profile.logo ? (
                             <img src={profile.logo} alt="Company Logo" className="object-contain" style={{height: '80px', width: '80px'}} />
                         ) : (
@@ -79,15 +99,17 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                     </div>
 
                     {/* Section 2: Company Details */}
-                    <div className="company-name text-center px-4 flex-grow">
-                        <p className="font-bold break-words" style={{fontSize: '2rem', lineHeight: '2.25rem'}}>{profile.companyName}</p>
-                        <p>{profile.companyAddress}</p>
-                        <p>GSTIN: {profile.gstin} &nbsp;&nbsp; PAN: {profile.pan}</p>
+                    <div className="company-name text-center px-2 flex-grow overflow-hidden">
+                        <p className="font-bold truncate" style={{ fontSize: getCompanyNameFontSize(profile.companyName), lineHeight: '2.25rem' }}>
+                            {profile.companyName || "COMPANY NAME"}
+                        </p>
+                        <p className="text-xs">{profile.companyAddress}</p>
+                        <p className="text-xs">GSTIN: {profile.gstin} &nbsp;&nbsp; PAN: {profile.pan}</p>
                     </div>
                     
-                    {/* Section 3: Empty Placeholder */}
-                    <div className="empty-placeholder" style={{ width: '84px', flexShrink: 0, padding: '16px' }}>
-                        {/* Empty as per request */}
+                    {/* Section 3: QR Code Box */}
+                    <div className="company-qr flex items-center justify-center border border-black bg-gray-50 text-gray-400 font-bold flex-shrink-0" style={{ width: '80px', height: '80px', fontSize: '10px' }}>
+                        QR CODE
                     </div>
                 </div>
                 <h2 className="text-center font-bold text-lg underline">TAX INVOICE</h2>
@@ -96,14 +118,14 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                 <div className="grid grid-cols-2 border-t border-b border-black">
                     <div className="border-r border-black p-2 space-y-1">
                         <div className="flex items-center"><span className="w-1/2 font-semibold">Tax Invoice No.</span>: <span className="pl-2">{invoice.invoiceNumber}</span></div>
-                        <div className="flex items-center"><span className="w-1/2 font-semibold">Date</span>: <span className="pl-2">{invoice.issueDate}</span></div>
+                        <div className="flex items-center"><span className="w-1/2 font-semibold">Date</span>: <span className="pl-2">{formatDateDDMMYYYY(invoice.issueDate)}</span></div>
                         <div className="flex items-center"><span className="w-1/2 font-semibold">Tax Payable on Reverse Charge</span>: <span className="pl-2">{invoice.taxPayableOnReverseCharge ? 'Yes' : 'No'}</span></div>
                         <div className="flex items-center"><span className="w-1/2 font-semibold">State & Code</span>: <span className="pl-2">{`${profile.companyState || ''} ${profile.companyStateCode || ''}`.trim() || '-'}</span></div>
                     </div>
                     <div className="p-2 space-y-1">
                         <FormFieldPreview label="Transport Mode" value={invoice.transportMode} />
                         <FormFieldPreview label="Vehicle No" value={invoice.vehicleNo} />
-                        <FormFieldPreview label="Date of Supply" value={invoice.dateOfSupply} />
+                        <FormFieldPreview label="Date of Supply" value={formatDateDDMMYYYY(invoice.dateOfSupply)} />
                         <FormFieldPreview label="Place of Supply" value={invoice.placeOfSupply} />
                         <FormFieldPreview label="Order No" value={invoice.orderNo} />
                     </div>
@@ -113,25 +135,25 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                 <div className="grid grid-cols-2 border-b border-black">
                     <div className="border-r border-black p-2 space-y-1">
                         <div className="font-bold bg-gray-200 text-center mb-2 flex items-center justify-center py-1 whitespace-nowrap">DETAIL OF RECEIVER (BILLED TO)</div>
-                        <FormFieldPreview label="Name" value={invoice.client.name} />
+                        <FormFieldPreview label="Name" value={invoice.client.name} labelWidth="w-[16%]" />
                         <div className="flex items-start">
-                            <span className="w-1/3 text-sm font-semibold">Address</span>
+                            <span className="w-[16%] text-sm font-semibold">Address</span>
                             <span className="px-2">:</span>
                             <span className="flex-grow text-sm break-words whitespace-pre-line">{invoice.client.address || '-'}</span>
                         </div>
-                        <FormFieldPreview label="GSTIN" value={invoice.client.gstin} />
-                        <FormFieldPreview label="State & Code" value={`${invoice.client.state || ''} ${invoice.client.stateCode || ''}`} />
+                        <FormFieldPreview label="GSTIN" value={invoice.client.gstin} labelWidth="w-[16%]" />
+                        <FormFieldPreview label="State & Code" value={`${invoice.client.state || ''} ${invoice.client.stateCode || ''}`} labelWidth="w-[16%]" />
                     </div>
                     <div className="p-2 space-y-1">
                         <div className="font-bold bg-gray-200 text-center mb-2 flex items-center justify-center py-1 whitespace-nowrap">DETAIL OF RECEIVER (SHIPPED TO)</div>
-                        <FormFieldPreview label="Name" value={invoice.shippingDetails?.name} />
+                        <FormFieldPreview label="Name" value={invoice.shippingDetails?.name} labelWidth="w-[16%]" />
                         <div className="flex items-start">
-                            <span className="w-1/3 text-sm font-semibold">Address</span>
+                            <span className="w-[16%] text-sm font-semibold">Address</span>
                             <span className="px-2">:</span>
                             <span className="flex-grow text-sm break-words whitespace-pre-line">{invoice.shippingDetails?.address || '-'}</span>
                         </div>
-                        <FormFieldPreview label="GSTIN" value={invoice.shippingDetails?.gstin} />
-                        <FormFieldPreview label="State & Code" value={`${invoice.shippingDetails?.state || ''} ${invoice.shippingDetails?.stateCode || ''}`} />
+                        <FormFieldPreview label="GSTIN" value={invoice.shippingDetails?.gstin} labelWidth="w-[16%]" />
+                        <FormFieldPreview label="State & Code" value={`${invoice.shippingDetails?.state || ''} ${invoice.shippingDetails?.stateCode || ''}`} labelWidth="w-[16%]" />
                     </div>
                 </div>
 
@@ -141,11 +163,11 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                         <thead>
                             <tr className="text-center font-bold">
                                 <th className="py-3 px-1 border border-black" style={{ width: '5%' }}>S.NO</th>
-                                <th className="py-3 px-1 border border-black" style={{ width: '40%' }}>DESCRIPTION OF GOODS</th>
+                                <th className="py-3 px-1 border border-black" style={{ width: '35%' }}>DESCRIPTION OF GOODS</th>
                                 <th className="py-3 px-1 border border-black" style={{ width: '10%' }}>HSN CODE</th>
                                 <th className="py-3 px-1 border border-black" style={{ width: '10%' }}>UOM</th>
                                 <th className="py-3 px-1 border border-black" style={{ width: '10%' }}>QUANTITY</th>
-                                <th className="py-3 px-1 border border-black" style={{ width: '10%' }}>RATE</th>
+                                <th className="py-3 px-1 border border-black" style={{ width: '15%' }}>RATE</th>
                                 <th className="py-3 px-1 border border-black" style={{ width: '15%' }}>AMOUNT</th>
                             </tr>
                         </thead>
@@ -205,11 +227,11 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                     <FormFieldPreview label="GR/LR NO" value={invoice.grLrNo}/>
                     <FormFieldPreview label="E WAY BILL NO" value={invoice.eWayBillNo}/>
                     <p className="font-bold underline">OUR BANK DETAIL :</p>
-                    <FormFieldPreview label="A/C NAME" value={invoice.bankDetails?.accountName}/>
-                    <FormFieldPreview label="A/C NO" value={invoice.bankDetails?.accountNumber}/>
-                    <FormFieldPreview label="BANK" value={invoice.bankDetails?.bankName}/>
-                    <FormFieldPreview label="BRANCH" value={invoice.bankDetails?.branch}/>
-                    <FormFieldPreview label="IFSC" value={invoice.bankDetails?.ifsc}/>
+                    <FormFieldPreview label="A/C NAME" value={invoice.bankDetails?.accountName} />
+                    <FormFieldPreview label="A/C NO" value={invoice.bankDetails?.accountNumber} />
+                    <FormFieldPreview label="BANK" value={invoice.bankDetails?.bankName} />
+                    <FormFieldPreview label="BRANCH" value={invoice.bankDetails?.branch} />
+                    <FormFieldPreview label="IFSC" value={invoice.bankDetails?.ifsc} />
 
                     <div>
                         <p className="font-semibold">Terms & Condition for Supply :</p>
@@ -220,7 +242,7 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                          <div>Subject to {invoice.jurisdiction} Jurisdiction</div>
                          <div className="text-center">
                              {profile.companySeal && (
-                                <div className="h-24 flex items-center justify-center">
+                                <div className="flex items-center justify-center" style={{ height: '135px' }}>
                                     <img src={profile.companySeal} alt="Company Seal" className="max-h-full max-w-full object-contain" />
                                 </div>
                              )}
@@ -229,11 +251,11 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                          <div className="text-right">
                              <p>For {profile.companyName}.</p>
                              {profile.authorizedSignature ? (
-                                 <div className="h-20 flex justify-end items-center my-2">
+                                 <div className="flex justify-end items-center my-2" style={{ height: '104px' }}>
                                      <img src={profile.authorizedSignature} alt="Authorized Signature" className="max-h-full max-w-full object-contain" />
                                  </div>
                              ) : (
-                                 <div className="h-24"></div>
+                                 <div style={{ height: '120px' }}></div>
                              )}
                              <p className="font-bold">AUTHORISED.</p>
                          </div>

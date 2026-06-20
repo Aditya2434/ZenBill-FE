@@ -15,13 +15,15 @@ const DisplayField = ({
   label,
   value,
   fullWidth = false,
+  labelWidth = "w-1/3",
 }: {
   label: string;
   value: any;
   fullWidth?: boolean;
+  labelWidth?: string;
 }) => (
   <div className={`flex items-start ${fullWidth ? "w-full" : ""}`}>
-    <label className="w-1/3 text-sm font-semibold">{label}</label>
+    <label className={`${labelWidth} text-sm font-semibold`}>{label}</label>
     <span className="px-2">:</span>
     <div className="flex-grow p-1 text-sm text-gray-900 break-words">
       {value ?? ""}
@@ -244,7 +246,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
         <div className="overflow-x-auto w-full">
           <div className="border-2 border-black p-4 space-y-2 text-sm min-w-[768px]">
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start pt-2">
               {/* Section 1: Logo */}
               <div
                 className="company-logo"
@@ -272,11 +274,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                   GSTIN: {profile.gstin} &nbsp;&nbsp; PAN: {profile.pan}
                 </p>
               </div>
-              {/* Section 3: Empty Placeholder */}
-              <div
-                className="empty-placeholder"
-                style={{ width: "84px", flexShrink: 0, padding: "16px" }}
-              />
+              {/* Section 3: QR Code Box */}
+              <div className="company-qr flex items-center justify-center border border-black bg-gray-50 text-gray-400 font-bold" style={{ width: '84px', height: '80px', flexShrink: 0, fontSize: '10px' }}>
+                QR CODE
+              </div>
             </div>
             <h2 className="text-center font-bold text-lg underline">
               TAX INVOICE
@@ -323,39 +324,39 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                 <h3 className="font-bold bg-gray-200 text-center mb-2">
                   DETAIL OF RECEIVER (BILLED TO)
                 </h3>
-                <DisplayField label="Name" value={data.billedToName} />
+                <DisplayField label="Name" value={data.billedToName} labelWidth="w-[16%]" />
                 <div className="flex items-start">
-                  <label className="w-1/3 text-sm font-semibold">Address</label>
+                  <label className="w-[16%] text-sm font-semibold">Address</label>
                   <span className="px-2">:</span>
                   <div className="flex-grow p-1 text-sm text-gray-900 break-words">
                     {data.billedToAddress}
                   </div>
                 </div>
-                <DisplayField label="GSTIN" value={data.billedToGstin} />
-                <DisplayField label="State" value={data.billedToState} />
-                <DisplayField label="Code" value={data.billedToCode} />
+                <DisplayField label="GSTIN" value={data.billedToGstin} labelWidth="w-[16%]" />
+                <DisplayField label="State" value={data.billedToState} labelWidth="w-[16%]" />
+                <DisplayField label="Code" value={data.billedToCode} labelWidth="w-[16%]" />
               </div>
               <div className="p-2 space-y-1">
                 <h3 className="font-bold bg-gray-200 text-center mb-2">
                   DETAIL OF RECEIVER (SHIPPED TO)
                 </h3>
-                <DisplayField label="Name" value={data.shippedToName} />
+                <DisplayField label="Name" value={data.shippedToName} labelWidth="w-[16%]" />
                 <div className="flex items-start">
-                  <label className="w-1/3 text-sm font-semibold">Address</label>
+                  <label className="w-[16%] text-sm font-semibold">Address</label>
                   <span className="px-2">:</span>
                   <div className="flex-grow p-1 text-sm text-gray-900 break-words">
                     {data.shippedToAddress}
                   </div>
                 </div>
-                <DisplayField label="GSTIN" value={data.shippedToGstin} />
-                <DisplayField label="State" value={data.shippedToState} />
-                <DisplayField label="Code" value={data.shippedToCode} />
+                <DisplayField label="GSTIN" value={data.shippedToGstin} labelWidth="w-[16%]" />
+                <DisplayField label="State" value={data.shippedToState} labelWidth="w-[16%]" />
+                <DisplayField label="Code" value={data.shippedToCode} labelWidth="w-[16%]" />
               </div>
             </div>
 
             {/* Items */}
             <div>
-              <div className="grid grid-cols-[3fr,14fr,4fr,4fr,4fr,4fr,5fr,2fr] border-b border-black font-bold text-center">
+              <div className="grid grid-cols-[2fr,14fr,4fr,4fr,4fr,5fr,5fr,2fr] border-b border-black font-bold text-center">
                 <div className="p-1 border-r border-black">S.NO</div>
                 <div className="p-1 border-r border-black">
                   DESCRIPTION OF GOODS
@@ -370,7 +371,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                 {(data.items || []).map((item: any, index: number) => (
                   <div
                     key={index}
-                    className="grid grid-cols-[3fr,14fr,4fr,4fr,4fr,4fr,5fr,2fr] items-center"
+                    className="grid grid-cols-[2fr,14fr,4fr,4fr,4fr,5fr,5fr,2fr] items-center"
                   >
                     <div className="text-center p-1">{index + 1}</div>
                     <div className="p-1 text-gray-900">{item.description}</div>
