@@ -81,14 +81,14 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
           <div className="w-[800px] h-[1130px] bg-white p-8 text-[13px] text-black font-sans box-border flex flex-col shadow-sm">
             <div className="border border-black flex-1 flex flex-col">
               {/* Header */}
-              <div className="flex p-4 items-center shrink-0">
+              <div className="flex p-4 pt-6 items-center shrink-0">
                 <div className="w-20 h-20 bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 text-gray-500 font-bold">LOGO</div>
                 <div className="flex-1 text-center px-4">
                   <div className="text-2xl font-bold uppercase">YOUR COMPANY NAME CO.</div>
                   <div className="mt-1">123 Corporate Office Blvd, Business District, State</div>
                   <div className="font-bold mt-1">GSTIN: 22AAAAA0000A1Z0 &nbsp;&nbsp;&nbsp; PAN: ABCDE1234F</div>
                 </div>
-                <div className="w-20"></div>
+                <div className="w-20 h-20 border border-black bg-gray-50 flex items-center justify-center text-gray-400 font-bold text-xs shrink-0">QR CODE</div>
               </div>
               
               <div className="text-center font-bold text-lg border-y border-black py-1 shrink-0">TAX INVOICE</div>
@@ -117,43 +117,43 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                 <div className="flex flex-col">
                   <div className="bg-gray-200 text-center font-bold py-1.5 border-b border-black">DETAILS OF RECEIVER (BILLED TO)</div>
                   <div className="p-3 space-y-1.5">
-                    <div className="flex"><span className="w-24 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
                   </div>
                 </div>
                 <div className="flex flex-col">
                   <div className="bg-gray-200 text-center font-bold py-1.5 border-b border-black">DETAILS OF RECEIVER (SHIPPED TO)</div>
                   <div className="p-3 space-y-1.5">
-                    <div className="flex"><span className="w-24 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
-                    <div className="flex"><span className="w-24 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">Name</span><span className="font-bold">: ABC Client Pvt Ltd</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">Address</span><span>: 456 Commercial Dist, State</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">GSTIN</span><span>: 19AAAAA0000A1Z5</span></div>
+                    <div className="flex"><span className="w-12 font-semibold">State</span><span className="font-bold">: West Bengal 19</span></div>
                   </div>
                 </div>
               </div>
 
               {/* Table Header */}
               <div className="flex border-b border-black font-bold text-center divide-x divide-black bg-gray-100 shrink-0">
-                <div className="w-[6%] p-2">S.NO</div>
-                <div className="w-[34%] p-2">DESCRIPTION OF GOODS</div>
-                <div className="w-[12%] p-2">HSN CODE</div>
-                <div className="w-[12%] p-2">UOM</div>
-                <div className="w-[12%] p-2">QUANTITY</div>
-                <div className="w-[12%] p-2">RATE</div>
-                <div className="w-[12%] p-2">AMOUNT</div>
+                <div className="w-[5%] p-2">S.NO</div>
+                <div className="w-[35%] p-2">DESCRIPTION OF GOODS</div>
+                <div className="w-[10%] p-2">HSN CODE</div>
+                <div className="w-[10%] p-2">UOM</div>
+                <div className="w-[10%] p-2">QUANTITY</div>
+                <div className="w-[15%] p-2">RATE</div>
+                <div className="w-[15%] p-2">AMOUNT</div>
               </div>
 
               {/* Table Body (Flex-1 to stretch down) */}
               <div className="flex-1 flex divide-x divide-black border-b border-black">
-                <div className="w-[6%] p-3 text-center">1</div>
-                <div className="w-[34%] p-3 text-left font-semibold">Sample Premium Product</div>
-                <div className="w-[12%] p-3 text-center">000000</div>
-                <div className="w-[12%] p-3 text-center">NOS</div>
-                <div className="w-[12%] p-3 text-right">10</div>
-                <div className="w-[12%] p-3 text-right">5,000.00</div>
-                <div className="w-[12%] p-3 text-right pr-4">50,000.00</div>
+                <div className="w-[5%] p-3 text-center">1</div>
+                <div className="w-[35%] p-3 text-left font-semibold">Sample Premium Product</div>
+                <div className="w-[10%] p-3 text-center">000000</div>
+                <div className="w-[10%] p-3 text-center">NOS</div>
+                <div className="w-[10%] p-3 text-right">10</div>
+                <div className="w-[15%] p-3 text-right">5,000.00</div>
+                <div className="w-[15%] p-3 text-right pr-4">50,000.00</div>
               </div>
 
               {/* Totals */}
@@ -188,11 +188,11 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                 <div className="grid grid-cols-3 mt-4 items-end">
                   <div className="pb-1">Subject to <span className="font-bold">DURGAPUR</span> Jurisdiction</div>
                   <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full border border-gray-400 flex items-center justify-center text-gray-400 text-xs mb-1">SEAL</div>
+                    <div className="w-24 h-24 rounded-full border border-gray-400 flex items-center justify-center text-gray-400 text-xs mb-1">SEAL</div>
                     <span>Common seal</span>
                   </div>
                   <div className="flex flex-col items-end pb-1">
-                    <div className="font-bold mb-8">For YOUR COMPANY NAME CO.</div>
+                    <div className="font-bold mb-12">For YOUR COMPANY NAME CO.</div>
                     <div className="font-bold">Authorised</div>
                   </div>
                 </div>

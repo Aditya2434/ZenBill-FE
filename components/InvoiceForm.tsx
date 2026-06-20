@@ -1710,7 +1710,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="grid grid-cols-3 pt-4 text-xs items-end gap-4 border-t border-gray-100">
             <div>Subject to <input name="jurisdiction" value={invoice.jurisdiction} onChange={handleInputChange} className="w-32 p-1 border border-gray-300 bg-white text-gray-900 rounded-sm" /> Jurisdiction</div>
             <div className="text-center flex flex-col items-center justify-center">
-              {profile.companySeal && (<div className="h-16 flex items-center justify-center mb-1"><img src={profile.companySeal} alt="Seal" className="max-h-full max-w-full object-contain" /></div>)}
+              {profile.companySeal && (<div className="h-18 flex items-center justify-center mb-1"><img src={profile.companySeal} alt="Seal" className="max-h-full max-w-full object-contain" /></div>)}
               <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Common seal</span>
             </div>
             <div className="text-right flex flex-col items-end">

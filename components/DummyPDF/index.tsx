@@ -68,12 +68,12 @@ type DummyPDFProps = {
 // =========================================================================
 const styles = StyleSheet.create({
   page: {
-    padding: 12,
-    paddingTop: 24,
+    padding: 22,
   },
   container: {
     borderWidth: 1,
     width: "100%",
+    height: 797.89,
   },
   boldText: {
     fontWeight: "bold",
@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
+    paddingTop: 5,
   },
   companyLogo: {
     height: 72,
@@ -96,14 +97,14 @@ const styles = StyleSheet.create({
     objectFit: "contain",
   },
   companyDetails: {
-    flexGrow: 1,
-    marginHorizontal: 12,
+    flex: 1,
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 4,
   },
   companyHeaderName: {
-    fontSize: 20,
+    width: "100%",
     textAlign: "center",
     marginBottom: 2,
     fontWeight: "bold",
@@ -121,10 +122,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   companyQR: {
-    height: 36,
-    width: 36,
+    height: 72,
+    width: 72,
+    borderWidth: 1,
+    borderColor: "black",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#fafafa",
   },
   sectionTitle: {
     fontSize: 12,
@@ -140,11 +144,11 @@ const styles = StyleSheet.create({
   },
   taxInvoiceDetails: {
     flex: 1,
-    padding: 8,
+    padding: 6,
   },
   transportInvoiceDetails: {
     flex: 1,
-    padding: 8,
+    padding: 6,
     borderLeftWidth: 1,
     borderColor: "black",
   },
@@ -155,6 +159,13 @@ const styles = StyleSheet.create({
   },
   lwvLabel: {
     width: "40%",
+    textAlign: "left",
+    paddingRight: 4,
+    fontSize: 9,
+    fontWeight: 500,
+  },
+  addressLabel: {
+    width: "18%",
     textAlign: "left",
     paddingRight: 4,
     fontSize: 9,
@@ -172,20 +183,19 @@ const styles = StyleSheet.create({
     textAlign: "left",
   },
   stateCodeContainer: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     flexWrap: "nowrap",
-    marginBottom: 3,
   },
   stateWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    flexGrow: 1,
   },
   codeWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 12,
   },
   stateInlineText: {
     fontSize: 9,
@@ -197,7 +207,7 @@ const styles = StyleSheet.create({
     paddingRight: 2,
   },
   lwvValueWrapper: {
-    width: "60%",
+    flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
   },
@@ -219,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: 500,
   },
   bankValueWrapper: {
-    width: "60%",
+    flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
   },
@@ -252,7 +262,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: 5,
   },
   h3Text: {
     fontSize: 9,
@@ -269,6 +279,8 @@ const styles = StyleSheet.create({
   amountInWord: {
     flex: 1,
     padding: 6,
+    borderRightWidth: 1,
+    borderColor: "black",
   },
   labelTotalAmountInWords: {
     width: "100%",
@@ -303,7 +315,7 @@ const styles = StyleSheet.create({
   },
   amountTaxDetails: {
     flex: 1,
-    padding: 8,
+    padding: 6,
   },
   bankDetails: {
     flexDirection: "row",
@@ -367,7 +379,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
   productName: {
-    flex: 2,
+    width: 187.5,
     borderRightWidth: 1,
   },
   hsnCode: {
@@ -379,15 +391,15 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
   qty: {
-    width: 80,
+    width: 75,
     borderRightWidth: 1,
   },
   rate: {
-    width: 70,
+    width: 65.5,
     borderRightWidth: 1,
   },
   total: {
-    width: 90,
+    width: 87,
   },
   textCenter: { textAlign: "center" },
   textLeft: { textAlign: "left" },
@@ -399,7 +411,7 @@ const styles = StyleSheet.create({
   footerContainer: {
     width: "100%",
     flexDirection: "row",
-    height: 90,
+    height: 110,
   },
   footerSubject: {
     flex: 1,
@@ -409,7 +421,7 @@ const styles = StyleSheet.create({
   },
   fSLabel: {
     fontSize: 8,
-    paddingBottom: 6,
+    paddingBottom: 4,
     paddingLeft: 8,
   },
   footerStamp: {
@@ -419,15 +431,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fStampStampImg: {
-    width: 92,
-    height: 92,
+    width: 100,
+    height: 100,
     objectFit: "contain",
     alignSelf: "center",
   },
+  fSignImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  },
   fStampLabel: {
-    paddingTop: 6,
+    paddingTop: 4,
     fontSize: 8,
-    paddingBottom: 6,
+    paddingBottom: 4,
     textAlign: "center",
   },
   footerSignature: {
@@ -436,28 +453,48 @@ const styles = StyleSheet.create({
     flexDirection: "column",
   },
   fSignLabel: {
-    marginBottom: 6,
+    marginBottom: 4,
     fontSize: 8,
   },
   fSignPhoto: {
     width: "100%",
-    height: "100%",
+    height: 58,
     objectFit: "contain",
   },
   fSignLabelAuth: {
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 4,
+    paddingBottom: 4,
     alignSelf: "flex-end",
     fontSize: 8,
   },
   bottomBlock: {
-    marginTop: 8,
+    marginTop: 0,
   },
   bankRowHeader: {
     fontSize: 8,
     fontWeight: "bold",
   },
 });
+
+function formatDateDDMMYYYY(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  // Handle YYYY-MM-DD
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  // Handle YYYYMMDD
+  const compactMatch = dateStr.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compactMatch) return `${compactMatch[3]}/${compactMatch[2]}/${compactMatch[1]}`;
+  return dateStr;
+}
+
+function getCompanyNameFontSize(name: string): number {
+  const len = (name || "").length;
+  if (len <= 20) return 24;
+  if (len <= 30) return 20;
+  if (len <= 40) return 16;
+  if (len <= 50) return 13;
+  return 11;
+}
 
 function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
   const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
@@ -466,6 +503,8 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
   const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
   const totalTax = cgstAmount + sgstAmount + igstAmount;
   const total = subtotal + totalTax;
+
+  const companyNameFontSize = getCompanyNameFontSize(profile.companyName);
 
   const totalRows = 10;
   const rows = Array.from(
@@ -482,12 +521,14 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
               {profile.logo ? <Image src={profile.logo} style={styles.companyLogoImg} /> : <Text></Text>}
             </View>
             <View style={styles.companyDetails}>
-              <Text style={styles.companyHeaderName}>{profile.companyName || "COMPANY NAME"}</Text>
+              <Text style={[styles.companyHeaderName, { fontSize: companyNameFontSize }]}>{profile.companyName || "COMPANY NAME"}</Text>
               <Text style={styles.companyHeaderAddress}>{profile.companyAddress || ""}</Text>
               <Text style={[styles.companyHeaderGSTIN, styles.boldText]}>GSTIN: {profile.gstin || ""}</Text>
               <Text style={[styles.companyHeaderPAN, styles.boldText]}>PAN: {profile.pan || ""}</Text>
             </View>
-            <View style={styles.companyQR}></View>
+            <View style={styles.companyQR}>
+              <Text style={{ fontSize: 8, color: "#aaa", fontWeight: "bold" }}>QR CODE</Text>
+            </View>
           </View>
 
           <View style={styles.sectionTitle}>
@@ -507,7 +548,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                 <Text style={styles.lwvLabel}>Date</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
-                  <Text style={[styles.lwvValue, styles.boldText]}>{invoice.issueDate}</Text>
+                  <Text style={[styles.lwvValue, styles.boldText]}>{formatDateDDMMYYYY(invoice.issueDate)}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
@@ -552,7 +593,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                 <Text style={styles.lwvLabel}>Date of Supply</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
-                  <Text style={[styles.lwvValue, styles.boldText]}>{invoice.dateOfSupply || ""}</Text>
+                  <Text style={[styles.lwvValue, styles.boldText]}>{formatDateDDMMYYYY(invoice.dateOfSupply) || ""}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
@@ -592,21 +633,21 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                 <Text style={styles.h3Text}>DETAILS OF RECEIVER (BILLED TO)</Text>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>Name</Text>
+                <Text style={styles.addressLabel}>Name</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={[styles.lwvValue, styles.boldText]}>{invoice.client?.name || ""}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>Address</Text>
+                <Text style={styles.addressLabel}>Address</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={styles.lwvValue}>{invoice.client?.address || ""}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>GSTIN</Text>
+                <Text style={styles.addressLabel}>GSTIN</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={styles.lwvValue}>{invoice.client?.gstin || ""}</Text>
@@ -633,21 +674,21 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                 <Text style={styles.h3Text}>DETAILS OF RECEIVER (SHIPPED TO)</Text>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>Name</Text>
+                <Text style={styles.addressLabel}>Name</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={[styles.lwvValue, styles.boldText]}>{invoice.shippingDetails?.name || invoice.client?.name || ""}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>Address</Text>
+                <Text style={styles.addressLabel}>Address</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={styles.lwvValue}>{invoice.shippingDetails?.address || invoice.client?.address || ""}</Text>
                 </View>
               </View>
               <View style={styles.labelWithValue}>
-                <Text style={styles.lwvLabel}>GSTIN</Text>
+                <Text style={styles.addressLabel}>GSTIN</Text>
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={styles.lwvValue}>{invoice.shippingDetails?.gstin || ""}</Text>
@@ -670,7 +711,7 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
             </View>
           </View>
 
-          <View style={[styles.productTable, { flexGrow: 1 }]}>
+          <View style={styles.productTable}>
             <View style={[styles.rowHeader, styles.headerRow]}>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.serialNo]}><Text style={[styles.tableCellText, styles.textCenter]}>S.NO</Text></View>
               <View style={[{ fontWeight: "bold" }, styles.tableHeaderCellContainer, styles.productName]}><Text style={[styles.tableCellText, styles.textCenter]}>DESCRIPTION OF GOODS</Text></View>
@@ -731,6 +772,8 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
               </View>
             </View>
           </View>
+
+          <View style={{ flexGrow: 1 }} />
 
           <View wrap={false} style={styles.bottomBlock}>
             <View style={styles.bankDetails}>
