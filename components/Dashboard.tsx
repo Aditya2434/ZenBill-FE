@@ -146,6 +146,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         const body = await apiListInvoices();
         const list = Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : [];
         if (!cancelled) setRealInvoices(list);
+        try {
+          localStorage.setItem("zenbill_cached_invoices", JSON.stringify(list));
+        } catch (_) {}
       } catch (e) {
         console.error("Dashboard failed to fetch invoices", e);
       } finally {

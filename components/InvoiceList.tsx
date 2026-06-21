@@ -73,6 +73,9 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           : Array.isArray(body?.data)
           ? body.data
           : [];
+        try {
+          localStorage.setItem("zenbill_cached_invoices", JSON.stringify(list));
+        } catch (_) {}
         const mapped = list.map((it: any) => ({
           id: it.id,
           invoiceNumber: String(it.invoiceNumber || ""),

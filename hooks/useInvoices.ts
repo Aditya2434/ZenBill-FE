@@ -13,9 +13,7 @@ export const getFinancialYearString = (date: Date): string => {
     financialYearStart = date.getFullYear() - 1;
   }
   const financialYearEnd = financialYearStart + 1;
-  return `${String(financialYearStart).slice(-2)}-${String(
-    financialYearEnd
-  ).slice(-2)}`;
+  return `${financialYearStart}-${financialYearEnd}`;
 };
 
 export const getHighestInvoiceNumber = (
