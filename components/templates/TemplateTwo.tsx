@@ -23,9 +23,66 @@ const styles = StyleSheet.create({
   p4: { padding: 4 },
   p2: { padding: 2 },
   muted: { color: "#444" },
-  label: { fontSize: 7, color: "#444", marginBottom: 2 },
-  value: { fontWeight: "bold", fontSize: 8 },
+  label: { fontSize: 9, color: "#444", marginBottom: 2 },
+  value: { fontWeight: "bold", fontSize: 9 },
+  termsVal: { fontSize: 9 },
   tableHeader: { backgroundColor: "#f0f0f0", textAlign: "center", fontWeight: "bold" },
+  tableText: { fontSize: 9 },
+  addressText: { fontSize: 9 },
+  footerContainer: {
+    width: "100%",
+    flexDirection: "row",
+    height: 110,
+  },
+  footerSubject: {
+    flex: 1,
+    height: "100%",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  fSLabel: {
+    fontSize: 8,
+    paddingBottom: 4,
+    paddingLeft: 8,
+  },
+  footerStamp: {
+    flex: 1,
+    padding: 8,
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  fStampStampImg: {
+    width: 100,
+    height: 100,
+    objectFit: "contain",
+    alignSelf: "center",
+  },
+  fStampLabel: {
+    paddingTop: 4,
+    fontSize: 8,
+    paddingBottom: 4,
+    textAlign: "center",
+  },
+  footerSignature: {
+    flex: 1,
+    padding: 8,
+    flexDirection: "column",
+  },
+  fSignLabel: {
+    marginBottom: 4,
+    fontSize: 8,
+  },
+  fSignPhoto: {
+    width: "100%",
+    height: 58,
+    objectFit: "contain",
+  },
+  fSignLabelAuth: {
+    paddingTop: 4,
+    paddingBottom: 4,
+    alignSelf: "flex-end",
+    fontSize: 8,
+  },
 });
 
 // Helper Functions
@@ -74,6 +131,15 @@ function numberToWordsINR(num: number): string {
   return res.trim().replace(/\s\s+/g, " ") + " RUPEES ONLY.";
 }
 
+function getCompanyNameFontSize(name: string): number {
+  const len = (name || "").length;
+  if (len <= 20) return 24;
+  if (len <= 30) return 20;
+  if (len <= 40) return 16;
+  if (len <= 50) return 13;
+  return 11;
+}
+
 export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; profile: CompanyProfile }) {
   const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
   const cgstAmount = subtotal * ((invoice.cgstRate || 0) / 100);
@@ -81,6 +147,8 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
   const igstAmount = subtotal * ((invoice.igstRate || 0) / 100);
   const totalTax = cgstAmount + sgstAmount + igstAmount;
   const total = subtotal + totalTax;
+
+  const companyNameFontSize = getCompanyNameFontSize(profile.companyName);
 
   return (
     <Document>
@@ -96,7 +164,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
 
             {/* Centered Company Details */}
             <View style={{ width: '60%', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={[styles.bold, { fontSize: profile.companyName.length > 30 ? 11 : profile.companyName.length > 20 ? 13 : 16, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
+              <Text style={[styles.bold, { fontSize: companyNameFontSize, marginBottom: 6, textAlign: 'center', textTransform: 'uppercase' }]}>{profile.companyName}</Text>
               <Text style={{ textAlign: 'center', marginBottom: 2 }}>{profile.companyAddress}</Text>
               <Text style={{ textAlign: 'center', marginBottom: 2 }}>State: {profile.companyState} | Code: {profile.companyStateCode}</Text>
               {profile.email && <Text style={{ textAlign: 'center', marginBottom: 2 }}>Email: {profile.email}</Text>}
@@ -105,7 +173,7 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
 
             {/* Right Side: QR Code */}
             <View style={{ width: '20%', alignItems: 'flex-end', justifyContent: 'center' }}>
-               <View style={{ width: 60, height: 60, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
+               <View style={{ width: 72, height: 72, borderWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa' }}>
                   <Text style={{ color: '#aaa', fontSize: 8 }}>QR CODE</Text>
                </View>
             </View>
@@ -113,26 +181,26 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
 
           {/* 2. TAX INVOICE Title Row */}
           <View style={[styles.borderBottom, styles.p2, { backgroundColor: '#f0f0f0' }]}>
-             <Text style={[styles.bold, styles.textCenter, { fontSize: 14, letterSpacing: 2, paddingVertical: 4 }]}>TAX INVOICE</Text>
+             <Text style={[styles.bold, styles.textCenter, { fontSize: 12, letterSpacing: 2, paddingVertical: 2 }]}>TAX INVOICE</Text>
           </View>
 
           {/* 3. Grid Section - Addresses & Invoice Meta Data */}
           <View style={[styles.row, styles.borderBottom]}>
             {/* Left Side: Ship To & Bill To */}
             <View style={[{ width: "50%" }, styles.col, styles.borderRight]}>
-              <View style={[styles.p4, styles.borderBottom, { minHeight: 90 }]}>
+              <View style={[styles.p4, styles.borderBottom, { minHeight: 110 }]}>
                 <Text style={styles.label}>Consignee (Ship to)</Text>
                 <Text style={styles.value}>{invoice.shippingDetails?.name || invoice.client.name}</Text>
-                <Text>{invoice.shippingDetails?.address || invoice.client.address}</Text>
-                <Text>State: {invoice.shippingDetails?.state || invoice.client.state} | Code: {invoice.shippingDetails?.stateCode || invoice.client.stateCode}</Text>
-                <Text>GSTIN: {invoice.shippingDetails?.gstin || invoice.client.gstin}</Text>
+                <Text style={styles.addressText}>{invoice.shippingDetails?.address || invoice.client.address}</Text>
+                <Text style={styles.addressText}>State: {invoice.shippingDetails?.state || invoice.client.state} | Code: {invoice.shippingDetails?.stateCode || invoice.client.stateCode}</Text>
+                <Text style={styles.addressText}>GSTIN: {invoice.shippingDetails?.gstin || invoice.client.gstin}</Text>
               </View>
-              <View style={[styles.p4, { minHeight: 90 }]}>
+              <View style={[styles.p4, { minHeight: 110 }]}>
                 <Text style={styles.label}>Buyer (Bill to)</Text>
                 <Text style={styles.value}>{invoice.client.name}</Text>
-                <Text>{invoice.client.address}</Text>
-                <Text>State: {invoice.client.state} | Code: {invoice.client.stateCode}</Text>
-                <Text>GSTIN: {invoice.client.gstin}</Text>
+                <Text style={styles.addressText}>{invoice.client.address}</Text>
+                <Text style={styles.addressText}>State: {invoice.client.state} | Code: {invoice.client.stateCode}</Text>
+                <Text style={styles.addressText}>GSTIN: {invoice.client.gstin}</Text>
               </View>
             </View>
 
@@ -190,70 +258,70 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
               </View>
               <View style={[styles.p4, { flex: 1 }]}>
                 <Text style={styles.label}>Terms of Delivery</Text>
-                <Text style={styles.value}>{invoice.termsAndConditions || "-"}</Text>
+                <Text style={styles.termsVal}>{invoice.termsAndConditions || "-"}</Text>
               </View>
             </View>
           </View>
 
           {/* 4. Table Header Row */}
           <View style={[styles.row, styles.borderBottom, styles.tableHeader]}>
-            <View style={[{ width: "5%" }, styles.borderRight, styles.p4]}><Text>Sl No.</Text></View>
-            <View style={[{ width: "35%" }, styles.borderRight, styles.p4]}><Text>Description of Goods</Text></View>
-            <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>HSN/SAC</Text></View>
-            <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>Quantity</Text></View>
-            <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text>Rate</Text></View>
-            <View style={[{ width: "8%" }, styles.borderRight, styles.p4]}><Text>Per</Text></View>
-            <View style={[{ width: "16%" }, styles.p4]}><Text>Amount</Text></View>
+            <View style={[{ width: "5%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>S.NO</Text></View>
+            <View style={[{ width: "35%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>DESCRIPTION OF GOODS</Text></View>
+            <View style={[{ width: "12%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>HSN CODE</Text></View>
+            <View style={[{ width: "8%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>UOM</Text></View>
+            <View style={[{ width: "10%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>QUANTITY</Text></View>
+            <View style={[{ width: "15%" }, styles.borderRight, styles.p4]}><Text style={styles.tableText}>RATE</Text></View>
+            <View style={[{ width: "15%" }, styles.p4]}><Text style={styles.tableText}>AMOUNT</Text></View>
           </View>
 
           {/* 5. Table Body */}
           <View style={[styles.row, styles.borderBottom, { minHeight: 200 }]}>
             {/* Sl No */}
             <View style={[{ width: "5%" }, styles.borderRight, styles.p4, styles.textCenter]}>
-              {invoice.items.map((_, i) => <Text key={i} style={{ marginBottom: 4 }}>{i + 1}</Text>)}
+              {invoice.items.map((_, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{i + 1}</Text>)}
             </View>
             {/* Description */}
             <View style={[{ width: "35%" }, styles.borderRight, styles.p4]}>
-              {invoice.items.map((item, i) => <Text key={i} style={[styles.bold, { marginBottom: 4 }]}>{item.description}</Text>)}
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.bold, styles.tableText, { marginBottom: 4 }]}>{item.description}</Text>)}
               <View style={{ marginTop: 20 }}>
-                 {cgstAmount > 0 && <Text style={[styles.textRight, styles.bold]}>CGST:</Text>}
-                 {sgstAmount > 0 && <Text style={[styles.textRight, styles.bold]}>SGST:</Text>}
-                 {igstAmount > 0 && <Text style={[styles.textRight, styles.bold]}>IGST:</Text>}
+                 {cgstAmount > 0 && <Text style={[styles.textRight, styles.bold, styles.tableText]}>CGST @ {invoice.cgstRate || 0}%:</Text>}
+                 {sgstAmount > 0 && <Text style={[styles.textRight, styles.bold, styles.tableText]}>SGST @ {invoice.sgstRate || 0}%:</Text>}
+                 {igstAmount > 0 && <Text style={[styles.textRight, styles.bold, styles.tableText]}>IGST @ {invoice.igstRate || 0}%:</Text>}
               </View>
             </View>
-            {/* HSN/SAC */}
+            {/* HSN CODE */}
             <View style={[{ width: "12%" }, styles.borderRight, styles.p4, styles.textCenter]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.hsnCode || "-"}</Text>)}
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{item.hsnCode || "-"}</Text>)}
+            </View>
+            {/* UOM */}
+            <View style={[{ width: "8%" }, styles.borderRight, styles.p4, styles.textCenter]}>
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{item.uom || "-"}</Text>)}
             </View>
             {/* Quantity */}
-            <View style={[{ width: "12%" }, styles.borderRight, styles.p4, styles.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.quantity}</Text>)}
+            <View style={[{ width: "10%" }, styles.borderRight, styles.p4, styles.textRight]}>
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{item.quantity}</Text>)}
             </View>
             {/* Rate */}
-            <View style={[{ width: "12%" }, styles.borderRight, styles.p4, styles.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.unitPrice)}</Text>)}
-            </View>
-            {/* Per */}
-            <View style={[{ width: "8%" }, styles.borderRight, styles.p4, styles.textCenter]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{item.uom || "-"}</Text>)}
+            <View style={[{ width: "15%" }, styles.borderRight, styles.p4, styles.textRight]}>
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{formatCurrencyINR(item.unitPrice)}</Text>)}
             </View>
             {/* Amount */}
-            <View style={[{ width: "16%" }, styles.p4, styles.textRight]}>
-              {invoice.items.map((item, i) => <Text key={i} style={{ marginBottom: 4 }}>{formatCurrencyINR(item.quantity * item.unitPrice)}</Text>)}
+            <View style={[{ width: "15%" }, styles.p4, styles.textRight]}>
+              {invoice.items.map((item, i) => <Text key={i} style={[styles.tableText, { marginBottom: 4 }]}>{formatCurrencyINR(item.quantity * item.unitPrice)}</Text>)}
               <View style={{ marginTop: 20 }}>
-                 {cgstAmount > 0 && <Text>{formatCurrencyINR(cgstAmount)}</Text>}
-                 {sgstAmount > 0 && <Text>{formatCurrencyINR(sgstAmount)}</Text>}
-                 {igstAmount > 0 && <Text>{formatCurrencyINR(igstAmount)}</Text>}
+                 {cgstAmount > 0 && <Text style={styles.tableText}>{formatCurrencyINR(cgstAmount)}</Text>}
+                 {sgstAmount > 0 && <Text style={styles.tableText}>{formatCurrencyINR(sgstAmount)}</Text>}
+                 {igstAmount > 0 && <Text style={styles.tableText}>{formatCurrencyINR(igstAmount)}</Text>}
               </View>
             </View>
           </View>
 
           {/* 6. Total Final Row */}
           <View style={[styles.row, styles.borderBottom]}>
-             <View style={[{ width: "84%" }, styles.borderRight, styles.p4, { alignItems: "flex-end" }]}>
+             <View style={[{ width: "85%" }, styles.borderRight, styles.p4, { alignItems: "flex-end" }]}>
                 <Text style={styles.bold}>Total</Text>
              </View>
-             <View style={[{ width: "16%" }, styles.p4, styles.textRight]}>
+             <View style={[{ width: "15%" }, styles.p4, styles.textRight]}>
                 <Text style={styles.bold}>{formatCurrencyINR(total)}</Text>
              </View>
           </View>
@@ -311,15 +379,18 @@ export default function TemplateTwo({ invoice, profile }: { invoice: Invoice; pr
           </View>
 
           {/* 10. Final Signature Row */}
-          <View style={[styles.row, { flexGrow: 1, justifyContent: 'flex-end' }]}>
-             <View style={[{ width: "50%" }, styles.p4, { justifyContent: "space-between" }]}>
-                <Text style={[styles.bold, styles.textRight]}>for {profile.companyName}</Text>
-                {profile.authorizedSignature ? (
-                  <Image src={profile.authorizedSignature} style={{ height: 40, objectFit: 'contain', alignSelf: 'flex-end', marginTop: 10 }} />
-                ) : (
-                  <View style={{ height: 40, marginTop: 10 }} />
-                )}
-                <Text style={[styles.textRight, styles.label]}>Authorised Signatory</Text>
+          <View style={styles.footerContainer}>
+             <View style={styles.footerSubject}>
+                <Text style={styles.fSLabel}>Subject to <Text style={styles.bold}>{invoice.jurisdiction || ""}</Text> Jurisdiction</Text>
+             </View>
+             <View style={styles.footerStamp}>
+                {profile.companySeal ? <Image src={profile.companySeal} style={styles.fStampStampImg} /> : <View style={styles.fStampStampImg} />}
+                <Text style={styles.fStampLabel}>Common seal</Text>
+             </View>
+             <View style={styles.footerSignature}>
+                <Text style={[styles.fSignLabel, styles.bold]}>For {profile.companyName}</Text>
+                {profile.authorizedSignature ? <Image src={profile.authorizedSignature} style={styles.fSignPhoto} /> : <View style={styles.fSignPhoto} />}
+                <Text style={[styles.fSignLabelAuth, styles.bold]}>Authorised Signatory</Text>
              </View>
           </View>
           <View style={[styles.row, { borderTopWidth: 1, borderColor: '#000', padding: 2 }]}>

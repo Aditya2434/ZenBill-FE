@@ -193,7 +193,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                   </div>
                   <div className="flex flex-col items-end pb-1">
                     <div className="font-bold mb-12">For YOUR COMPANY NAME CO.</div>
-                    <div className="font-bold">Authorised</div>
+                    <div className="font-bold">Authorised Signatory</div>
                   </div>
                 </div>
               </div>
@@ -208,19 +208,19 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
               {/* Header 3-Cols */}
               <div className="flex border-b border-black p-4 items-center shrink-0">
                 <div className="w-1/4">
-                  <div className="w-24 h-24 bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 text-gray-500 font-bold">LOGO</div>
+                  <div className="w-20 h-20 bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 text-gray-500 font-bold">LOGO</div>
                 </div>
                 <div className="w-1/2 text-center">
-                  <div className="text-3xl font-black uppercase tracking-wide">YOUR COMPANY NAME CO.</div>
+                  <div className="text-2xl font-bold uppercase">YOUR COMPANY NAME CO.</div>
                   <div className="text-[14px] mt-2">123 Corporate Office Blvd, State</div>
                   <div className="text-[14px] mt-2">PAN: <span className="font-bold">ABCDE1234F</span> &nbsp;|&nbsp; GSTIN: <span className="font-bold">22AAAAA0000A1Z0</span></div>
                 </div>
                 <div className="w-1/4 flex justify-end">
-                  <div className="w-24 h-24 border border-gray-400 bg-gray-50 flex items-center justify-center text-gray-500 font-bold">QR CODE</div>
+                  <div className="w-20 h-20 border border-gray-400 bg-gray-50 flex items-center justify-center text-gray-500 font-bold">QR CODE</div>
                 </div>
               </div>
 
-              <div className="border-b border-black py-2.5 bg-gray-100 text-center font-black tracking-widest text-xl shrink-0">TAX INVOICE</div>
+              <div className="border-b border-black py-1.5 bg-gray-100 text-center font-bold tracking-widest text-lg shrink-0">TAX INVOICE</div>
               
               {/* Address / Meta */}
               <div className="flex border-b border-black divide-x divide-black shrink-0">
@@ -252,28 +252,30 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
 
               {/* Table Header */}
               <div className="flex border-b border-black bg-gray-100 font-bold text-center divide-x divide-black py-2 shrink-0">
-                <div className="w-[6%] p-2">Sl</div>
-                <div className="w-[34%] p-2">Description of Goods</div>
-                <div className="w-[12%] p-2">HSN/SAC</div>
-                <div className="w-[14%] p-2">Quantity</div>
-                <div className="w-[14%] p-2">Rate</div>
-                <div className="w-[20%] p-2">Amount</div>
+                <div className="w-[5%] p-2">S.NO</div>
+                <div className="w-[35%] p-2">DESCRIPTION OF GOODS</div>
+                <div className="w-[12%] p-2">HSN CODE</div>
+                <div className="w-[8%] p-2">UOM</div>
+                <div className="w-[10%] p-2">QUANTITY</div>
+                <div className="w-[15%] p-2">RATE</div>
+                <div className="w-[15%] p-2">AMOUNT</div>
               </div>
               
               {/* Table Body (Flex-1) */}
               <div className="flex-1 flex divide-x divide-black">
-                <div className="w-[6%] p-4 text-center">1</div>
-                <div className="w-[34%] p-4 font-bold">Sample Premium Product A</div>
+                <div className="w-[5%] p-4 text-center">1</div>
+                <div className="w-[35%] p-4 font-bold">Sample Premium Product A</div>
                 <div className="w-[12%] p-4 text-center">000000</div>
-                <div className="w-[14%] p-4 text-right">10 NOS</div>
-                <div className="w-[14%] p-4 text-right">5,000.00</div>
-                <div className="w-[20%] p-4 text-right font-bold pr-6">50,000.00</div>
+                <div className="w-[8%] p-4 text-center">NOS</div>
+                <div className="w-[10%] p-4 text-right">10</div>
+                <div className="w-[15%] p-4 text-right">5,000.00</div>
+                <div className="w-[15%] p-4 text-right font-bold pr-6">50,000.00</div>
               </div>
 
               {/* Tally Totals */}
               <div className="flex border-t border-b border-black divide-x divide-black bg-gray-100 shrink-0">
-                <div className="w-[80%] p-4 text-right font-bold text-lg">Total</div>
-                <div className="w-[20%] p-4 text-right font-bold text-lg pr-6">₹59,000.00</div>
+                <div className="w-[85%] p-4 text-right font-bold text-lg">Total</div>
+                <div className="w-[15%] p-4 text-right font-bold text-lg pr-6">₹59,000.00</div>
               </div>
 
               <div className="p-4 bg-gray-50 border-b border-black shrink-0">
@@ -298,11 +300,18 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
               </div>
 
               {/* Declaration / Auth */}
-              <div className="flex shrink-0 min-h-[130px] justify-end">
-                 <div className="w-1/2 p-4 flex flex-col justify-between items-end">
-                    <div className="font-bold text-base">for YOUR COMPANY NAME CO.</div>
-                    <div className="font-bold uppercase text-gray-600">Authorised Signatory</div>
-                 </div>
+              <div className="p-4 flex flex-col shrink-0">
+                <div className="grid grid-cols-3 mt-4 items-end">
+                  <div className="pb-1">Subject to <span className="font-bold">DURGAPUR</span> Jurisdiction</div>
+                  <div className="flex flex-col items-center">
+                    <div className="w-24 h-24 rounded-full border border-gray-400 flex items-center justify-center text-gray-400 text-xs mb-1">SEAL</div>
+                    <span>Common seal</span>
+                  </div>
+                  <div className="flex flex-col items-end pb-1">
+                    <div className="font-bold mb-12">For YOUR COMPANY NAME CO.</div>
+                    <div className="font-bold">Authorised Signatory</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -437,7 +446,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({ setView }) =
                   </div>
                   <div className="flex flex-col items-end pb-1">
                     <div className="font-bold mb-8">For YOUR COMPANY NAME CO.</div>
-                    <div className="font-bold">Authorised</div>
+                    <div className="font-bold">Authorised Signatory</div>
                   </div>
                 </div>
               </div>

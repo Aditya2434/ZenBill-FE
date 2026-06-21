@@ -257,7 +257,7 @@ export const TemplateDefault = React.forwardRef<HTMLDivElement, TemplateProps>((
                              ) : (
                                  <div style={{ height: '120px' }}></div>
                              )}
-                             <p className="font-bold">AUTHORISED.</p>
+                             <p className="font-bold">AUTHORISED SIGNATORY.</p>
                          </div>
                     </div>
                 </div>
