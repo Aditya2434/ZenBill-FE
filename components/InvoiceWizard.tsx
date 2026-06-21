@@ -97,7 +97,7 @@ const getFinancialYearString = (date: Date): string => {
   const year = date.getFullYear();
   const financialYearStart = month >= 4 ? year : year - 1;
   const financialYearEnd = financialYearStart + 1;
-  return `${String(financialYearStart).slice(-2)}-${String(financialYearEnd).slice(-2)}`;
+  return `${financialYearStart}-${financialYearEnd}`;
 };
 
 // ============================================================================
@@ -1416,18 +1416,34 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({ message: "", type: "success", isVisible: false });
-  const [scrolled, setScrolled] = useState(false);
+
+
+  const [backendInvoicesList, setBackendInvoicesList] = useState<Invoice[]>(() => {
+    try {
+      const cached = localStorage.getItem("zenbill_cached_invoices");
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
+  const userEditedSeqRef = React.useRef(false);
 
   useEffect(() => {
-    const handleScroll = (e: any) => {
-      const target = e.target;
-      if (target && (target.tagName === "MAIN" || target === window || target === document)) {
-        const scrollTop = target.scrollTop || 0;
-        setScrolled(scrollTop > 40);
-      }
-    };
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
+    let isMounted = true;
+    apiListInvoices().then((res) => {
+      if (!isMounted) return;
+      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      setBackendInvoicesList(list);
+      try {
+        localStorage.setItem("zenbill_cached_invoices", JSON.stringify(list));
+      } catch (_) {}
+      setIsLoadingInvoices(false);
+    }).catch((err) => {
+      console.error("Error loading backend invoices", err);
+      if (isMounted) setIsLoadingInvoices(false);
+    });
+    return () => { isMounted = false; };
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType) => {
@@ -1442,22 +1458,19 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   }, []);
 
   // ---------- Invoice number generation ----------
-  const generateNextInvoiceNumberFromBackend = useCallback(async (p: CompanyProfile): Promise<string> => {
-    try {
-      const backendInvoices = await apiListInvoices();
-      const list: any[] = Array.isArray(backendInvoices) ? backendInvoices : Array.isArray(backendInvoices?.data) ? backendInvoices.data : [];
-      const acronym = p.companyAcronym || p.companyName.split(" ").map(w => w[0]).join("").toUpperCase();
-      const fyStr = getFinancialYearString(new Date());
-      const prefix = `${acronym}/${fyStr}/`;
-      const highest = list.filter(inv => String(inv.invoiceNumber || "").startsWith(prefix))
-        .map(inv => parseInt(String(inv.invoiceNumber || "").split("/")[2] || "0", 10))
-        .filter(n => !isNaN(n))
-        .reduce((mx, n) => Math.max(mx, n), 0);
-      return `${prefix}${(highest + 1).toString().padStart(3, "0")}`;
-    } catch {
-      return generateNextInvoiceNumber(invoices, p);
+  const generateNextInvoiceNumberFromBackend = useCallback((list: Invoice[], p: CompanyProfile): string => {
+    if (!p || !p.companyName) {
+      return `INV/${getFinancialYearString(new Date())}/001`;
     }
-  }, [invoices]);
+    const acronym = p.companyAcronym || p.companyName.split(" ").map(w => w[0]).join("").toUpperCase();
+    const fyStr = getFinancialYearString(new Date());
+    const prefix = `${acronym}/${fyStr}/`;
+    const highest = list.filter(inv => String(inv.invoiceNumber || "").startsWith(prefix))
+      .map(inv => parseInt(String(inv.invoiceNumber || "").split("/")[2] || "0", 10))
+      .filter(n => !isNaN(n))
+      .reduce((mx, n) => Math.max(mx, n), 0);
+    return `${prefix}${(highest + 1).toString().padStart(3, "0")}`;
+  }, []);
 
   useEffect(() => {
     if (existingInvoice) {
@@ -1470,26 +1483,18 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
         setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
         setInvoiceNumberSequential(parts[2]);
       }
-    } else {
-      (async () => {
-        try {
-          const next = await generateNextInvoiceNumberFromBackend(profile);
-          const parts = next.split("/");
-          if (parts.length === 3) {
-            setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
-            setInvoiceNumberSequential(parts[2]);
-          }
-        } catch {
-          const fallback = generateNextInvoiceNumber(invoices, profile);
-          const parts = fallback.split("/");
-          if (parts.length === 3) {
-            setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
-            setInvoiceNumberSequential(parts[2]);
-          }
+    } else if (profile && profile.companyName) {
+      const listToUse = backendInvoicesList.length > 0 ? backendInvoicesList : invoices;
+      const next = generateNextInvoiceNumberFromBackend(listToUse, profile);
+      const parts = next.split("/");
+      if (parts.length === 3) {
+        setInvoiceNumberPrefix(`${parts[0]}/${parts[1]}/`);
+        if (!userEditedSeqRef.current) {
+          setInvoiceNumberSequential(parts[2]);
         }
-      })();
+      }
     }
-  }, [existingInvoice]);
+  }, [existingInvoice, profile, backendInvoicesList, isLoadingInvoices, invoices, generateNextInvoiceNumberFromBackend]);
 
   // ---------- Bank details ----------
   useEffect(() => {
@@ -1769,17 +1774,21 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   }, [clients]);
 
   const handleSequentialNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    userEditedSeqRef.current = true;
     setInvoiceNumberError(null);
     const num = e.target.value.replace(/[^0-9]/g, "");
     if (num.length <= 3) {
       setInvoiceNumberSequential(num);
       const candidate = `${invoiceNumberPrefix}${num.padStart(3, "0")}`;
-      const isDuplicate = invoices.some(inv => inv.invoiceNumber.toLowerCase() === candidate.toLowerCase());
-      const highest = getHighestInvoiceNumber(invoices, invoiceNumberPrefix);
-      if (isDuplicate) setInvoiceNumberError("Invoice number already exists.");
-      else if (num !== "" && Number(num) <= highest) setInvoiceNumberError(`Invoice no. must be > ${String(highest).padStart(3, "0")}.`);
+      const isDuplicate = backendInvoicesList.some(inv => inv.invoiceNumber.toLowerCase() === candidate.toLowerCase());
+      const highest = getHighestInvoiceNumber(backendInvoicesList, invoiceNumberPrefix);
+      if (isDuplicate) {
+        setInvoiceNumberError("Invoice number already exists.");
+      } else if (num !== "" && Number(num) <= highest) {
+        setInvoiceNumberError(`Invoice no. must be > ${String(highest).padStart(3, "0")}.`);
+      }
     }
-  }, [invoiceNumberPrefix, invoices]);
+  }, [invoiceNumberPrefix, backendInvoicesList]);
 
   const handleItemChange = useCallback((index: number, field: keyof InvoiceItem, value: string | number) => {
     setInvoice(prev => {
@@ -2221,7 +2230,7 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
       <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} duration={5000} />
 
       {/* Sticky Top Bar (Header + Stepper) */}
-      <div className={`wz-top-bar ${scrolled ? "wz-top-bar-scrolled" : ""}`}>
+      <div className="wz-top-bar">
         {/* Header */}
         <div className="wz-header">
           <div className="wz-header-left">
@@ -2315,20 +2324,15 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
         /* ---- STICKY TOP BAR ---- */
         .wz-top-bar {
           position: sticky;
-          top: -24px;
+          top: 0;
           z-index: 40;
           background: #fff;
           box-shadow: 0 4px 6px -1px rgba(0,0,0,.05), 0 2px 4px -1px rgba(0,0,0,.03);
-          transition: all 0.2s ease;
-        }
-        @media (min-width: 768px) {
-          .wz-top-bar {
-            top: -32px;
-          }
+          will-change: transform;
+          transition: box-shadow 0.25s ease, border-color 0.25s ease;
         }
         .wz-top-bar-scrolled {
-          top: 0px !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.10);
           border-bottom: 1px solid #E2E8F0;
         }
         .wz-top-bar-scrolled .wz-header {
@@ -2359,7 +2363,13 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
           min-height: 24px !important;
         }
         .wz-top-bar-scrolled .wz-stepper-wrap {
-          padding: 2px 16px 6px !important;
+          padding: 6px 16px 8px !important;
+        }
+        .wz-top-bar-scrolled .wz-step {
+          padding: 0 !important;
+          background: transparent !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
         }
         .wz-top-bar-scrolled .wz-step-label {
           display: none !important;
@@ -2394,20 +2404,20 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
           gap: 12px;
           background: #fff;
           border-bottom: 1px solid #E2E8F0;
-          padding: 20px 24px;
+          padding: 8px 24px;
           transition: padding 0.2s ease-in-out;
         }
         .wz-main-title {
-          font-size: 20px;
+          font-size: 15px;
           font-weight: 800;
           color: #0F172A;
           margin: 0;
           transition: font-size 0.2s ease-in-out;
         }
         .wz-main-sub {
-          font-size: 13px;
+          font-size: 11px;
           color: #64748B;
-          margin: 2px 0 0;
+          margin: 1px 0 0;
         }
         .wz-header-right {
           display: flex;
@@ -2416,11 +2426,11 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
           flex-wrap: wrap;
         }
         .wz-template-badge {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: .05em;
           text-transform: uppercase;
-          padding: 4px 10px;
+          padding: 3px 8px;
           border-radius: 20px;
           background: #EDE9FE;
           color: #5B21B6;
@@ -2430,22 +2440,21 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
         .wz-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 9px 18px;
-          border-radius: 8px;
-          font-size: 13px;
+          justify-content: center;
+          padding: 6px 12px;
+          font-size: 12px;
           font-weight: 600;
+          border-radius: 6px;
+          transition: all 0.15s ease-in-out;
+          border: 1.5px solid transparent;
           cursor: pointer;
-          border: none;
-          transition: all .15s ease;
-          text-decoration: none;
-          white-space: nowrap;
-          min-height: 38px;
+          user-select: none;
+          min-height: 32px;
         }
-        .wz-btn:disabled { opacity: .55; cursor: not-allowed; }
-        .wz-btn-primary { background: #4F46E5; color: #fff; box-shadow: 0 1px 4px rgba(79,70,229,.25); }
-        .wz-btn-primary:hover:not(:disabled) { background: #4338CA; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,.3); }
-        .wz-btn-secondary { background: #fff; color: #374151; border: 1.5px solid #D1D5DB; }
+        .wz-btn-primary { background: #4F46E5; color: #fff; }
+        .wz-btn-primary:hover:not(:disabled) { background: #4338CA; }
+        .wz-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .wz-btn-secondary { background: #fff; color: #374151; border-color: #D1D5DB; }
         .wz-btn-secondary:hover:not(:disabled) { background: #F9FAFB; border-color: #9CA3AF; }
         .wz-btn-outline { background: transparent; color: #4F46E5; border: 1.5px solid #C7D2FE; }
         .wz-btn-outline:hover:not(:disabled) { background: #EEF2FF; }
@@ -2459,41 +2468,61 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
         .wz-stepper-wrap {
           background: #fff;
           border-bottom: 1px solid #E2E8F0;
-          padding: 16px 24px;
+          padding: 6px 24px;
           transition: padding 0.2s ease-in-out;
         }
         .wz-stepper-desktop {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0;
+          gap: 6px;
           overflow-x: auto;
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE 10+ */
+        }
+        .wz-stepper-desktop::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
         }
         @media (max-width: 768px) { .wz-stepper-desktop { display: none; } }
         .wz-step {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           align-items: center;
           gap: 6px;
-          background: none;
-          border: none;
+          background: #F8FAFC;
+          border: 1.5px solid #E2E8F0;
           cursor: default;
-          padding: 0 4px;
-          min-width: 80px;
+          padding: 4px 8px;
+          border-radius: 6px;
+          min-width: auto;
+          transition: all 0.2s ease-in-out;
         }
-        .wz-step.wz-step-done { cursor: pointer; }
+        .wz-step.wz-step-done {
+          cursor: pointer;
+          background: #ECFDF5;
+          border-color: #D1FAE5;
+        }
+        .wz-step.wz-step-done:hover {
+          background: #D1FAE5;
+          border-color: #A7F3D0;
+        }
+        .wz-step.wz-step-active {
+          background: #EEF2FF;
+          border-color: #C7D2FE;
+          box-shadow: 0 1px 3px rgba(79, 70, 229, 0.05);
+        }
         .wz-step-circle {
-          width: 36px;
-          height: 36px;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
-          border: 2px solid #CBD5E1;
+          border: 1.5px solid #CBD5E1;
           background: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 13px;
+          font-size: 9px;
           font-weight: 700;
-          color: #94A3B8;
+          color: #64748B;
           transition: all .2s ease;
           position: relative;
           z-index: 1;
@@ -2507,32 +2536,28 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
           background: #4F46E5;
           border-color: #4F46E5;
           color: #fff;
-          box-shadow: 0 0 0 4px rgba(79,70,229,.15);
-          animation: wz-pulse 2s infinite;
-        }
-        @keyframes wz-pulse {
-          0%, 100% { box-shadow: 0 0 0 4px rgba(79,70,229,.15); }
-          50% { box-shadow: 0 0 0 8px rgba(79,70,229,.07); }
+          box-shadow: 0 0 0 3px rgba(79,70,229,.15);
         }
         .wz-step-label {
           font-size: 10px;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: .04em;
-          color: #94A3B8;
-          text-align: center;
-          line-height: 1.2;
-          max-width: 80px;
+          letter-spacing: .05em;
+          color: #64748B;
+          text-align: left;
+          line-height: 1;
+          white-space: nowrap;
+          transition: color 0.2s ease;
         }
-        .wz-step.wz-step-done .wz-step-label { color: #10B981; }
-        .wz-step.wz-step-active .wz-step-label { color: #4F46E5; font-weight: 700; }
-        .wz-step-check { width: 16px; height: 16px; }
+        .wz-step.wz-step-done .wz-step-label { color: #065F46; }
+        .wz-step.wz-step-active .wz-step-label { color: #4338CA; }
+        .wz-step-check { width: 11px; height: 11px; }
         .wz-step-connector {
           flex: 1;
           height: 2px;
           background: #E2E8F0;
-          margin-bottom: 18px;
-          min-width: 24px;
+          min-width: 12px;
+          max-width: 32px;
           transition: background .2s;
         }
         .wz-connector-done { background: #10B981; }

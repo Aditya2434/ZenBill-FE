@@ -331,9 +331,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const year = date.getFullYear();
     const financialYearStart = month >= 4 ? year : year - 1;
     const financialYearEnd = financialYearStart + 1;
-    return `${String(financialYearStart).slice(-2)}-${String(
-      financialYearEnd
-    ).slice(-2)}`;
+    return `${financialYearStart}-${financialYearEnd}`;
   };
 
   useEffect(() => {
