@@ -395,7 +395,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               </tr>
             )}
             {!isLoading && rows.map((r) => {
-              const isPaid = r.status === "Paid";
+              const isPaid = r.status?.trim().toLowerCase() === "paid";
               return (
                 <tr key={r.id} className="bg-white border-b hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">
