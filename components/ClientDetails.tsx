@@ -111,7 +111,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
 
   // --- Financial Balances ---
   const totalBilled = backendInvoices.reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0);
-  const totalPaid = backendInvoices.filter(inv => inv.status === 'Paid').reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0); 
+  const totalPaid = backendInvoices.filter(inv => inv.status?.trim().toLowerCase() === 'paid').reduce((sum, inv) => sum + (inv.totalAmountAfterTax || 0), 0); 
   const totalDue = totalBilled - totalPaid;
 
   // --- Smart FIFO Order Fulfillment Calculation ---
@@ -620,7 +620,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({
                       header: "Status",
                       className: "text-center",
                       accessor: (inv) => {
-                        const isPaid = inv.status === "Paid";
+                        const isPaid = inv.status?.trim().toLowerCase() === "paid";
                         return isPaid ? (
                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
                               <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>

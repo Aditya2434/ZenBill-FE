@@ -135,8 +135,22 @@ const AreaTooltip = ({ active, payload, label }: any) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const [realInvoices, setRealInvoices] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [realInvoices, setRealInvoices] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem("zenbill_cached_invoices");
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem("zenbill_cached_invoices");
+      return !cached || JSON.parse(cached).length === 0;
+    } catch (_) {
+      return true;
+    }
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -161,20 +175,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const totalInvoices = realInvoices.length;
   
   const pendingPayments = realInvoices.filter(
-    inv => (inv.status || 'Unpaid') === 'Unpaid' || inv.status === 'Overdue'
+    inv => {
+      const s = (inv.status || 'Unpaid').trim().toLowerCase();
+      return s === 'unpaid' || s === 'overdue';
+    }
   ).length;
   
-  const paidInvoices = realInvoices.filter(inv => inv.status === 'Paid').length;
+  const paidInvoices = realInvoices.filter(inv => inv.status?.trim().toLowerCase() === 'paid').length;
 
-  const totalRevenue = realInvoices
-    .filter(inv => inv.status === 'Paid')
+  const totalPaidAmount = realInvoices
+    .filter(inv => inv.status?.trim().toLowerCase() === 'paid')
     .reduce((sum, inv) => sum + (Number(inv.totalAmountAfterTax) || 0), 0);
 
   const totalPendingAmount = realInvoices
-    .filter(inv => (inv.status || 'Unpaid') === 'Unpaid' || inv.status === 'Overdue')
+    .filter(inv => {
+      const s = (inv.status || 'Unpaid').trim().toLowerCase();
+      return s === 'unpaid' || s === 'overdue';
+    })
     .reduce((sum, inv) => sum + (Number(inv.totalAmountAfterTax) || 0), 0);
 
-  const totalMonetaryValue = totalRevenue + totalPendingAmount;
+  const totalRevenue = totalPaidAmount + totalPendingAmount;
+
+  const totalMonetaryValue = totalRevenue;
 
   const currentYear = new Date().getFullYear();
   const monthlyRevenue: Record<number, number> = {};
@@ -200,7 +222,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 
   // Data for Revenue Breakdown (Amount) - Using high-contrast distinct colors
   const amountCounts = [
-    { name: 'Paid', value: totalRevenue, color: '#3B82F6' },    // Vibrant Blue
+    { name: 'Paid', value: totalPaidAmount, color: '#3B82F6' },    // Vibrant Blue
     { name: 'Pending', value: totalPendingAmount, color: '#F97316' } // Bright Orange
   ].filter(s => s.value > 0);
 
@@ -257,10 +279,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         <StatCard
           title="Total Revenue"
-          value={`₹${totalRevenue >= 100000
-            ? `${(totalRevenue / 100000).toFixed(2)}L`
-            : totalRevenue.toLocaleString('en-IN')}`}
-          sub="From paid invoices"
+          value={`₹${totalRevenue.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          sub="Total billed revenue"
           icon={<CurrencyIcon className="w-6 h-6 text-white" />}
           gradient="bg-gradient-to-br from-violet-400 to-indigo-500"
           glowColor="rgba(139,92,246,0.35)"
