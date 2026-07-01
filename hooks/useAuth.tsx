@@ -19,46 +19,85 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// ─── Tiny cache helpers (sessionStorage) ──────────────────────────────────────
+const AUTH_CACHE_KEY = "zenbill_auth_state";
+const AUTH_EMAIL_KEY = "zenbill_user_email";
+
+function readCachedAuth(): { authenticated: boolean; email: string | null } | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAuth(authenticated: boolean, email: string | null) {
+  try {
+    sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ authenticated, email }));
+    if (email) sessionStorage.setItem(AUTH_EMAIL_KEY, email);
+  } catch {}
+}
+
+function clearCachedAuth() {
+  try {
+    sessionStorage.removeItem(AUTH_CACHE_KEY);
+    sessionStorage.removeItem(AUTH_EMAIL_KEY);
+  } catch {}
+}
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
   children,
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Read cached state synchronously — no flicker, no spinner on revisit
+  const cached = readCachedAuth();
 
-  // Check authentication status on mount by trying to fetch protected data
-  // If cookie exists and is valid, this will succeed
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    cached?.authenticated ?? false
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(!cached); // only show loading if no cache
+  const [userEmail, setUserEmail] = useState<string | null>(
+    cached?.email ??
+    (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(AUTH_EMAIL_KEY) : null)
+  );
+
   useEffect(() => {
+    // If we have a cached positive auth state, re-validate silently in background
+    // (don't block the UI — the user sees the dashboard immediately)
     const checkAuth = async () => {
       try {
-        // Try to fetch company data - a protected endpoint
-        // If cookie is valid, this will succeed
         const response = await apiGetCompany();
-
         if (response) {
-          // Successfully fetched protected data = authenticated
           setIsAuthenticated(true);
-          // We don't get email from company endpoint, but that's okay
+          writeCachedAuth(true, userEmail);
         } else {
           setIsAuthenticated(false);
+          clearCachedAuth();
         }
-      } catch (error) {
-        // Failed to fetch = not authenticated or cookie expired
-        setIsAuthenticated(false);
-        setUserEmail(null);
+      } catch {
+        // Only log out if we were previously unauthenticated too
+        if (!cached?.authenticated) {
+          setIsAuthenticated(false);
+          clearCachedAuth();
+        }
+        // If we had a cached authenticated state, keep showing the UI;
+        // the user will be redirected if they try to make an API call
       } finally {
         setIsLoading(false);
       }
     };
 
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback((email: string) => {
-    // After successful login, cookie is already set by backend
-    // Just update local state
     setIsAuthenticated(true);
     setUserEmail(email);
+    writeCachedAuth(true, email);
   }, []);
 
   const logout = useCallback(async () => {
@@ -67,11 +106,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Clear local state regardless of API call result
       setIsAuthenticated(false);
       setUserEmail(null);
-
-      // Clean up any old localStorage tokens
+      clearCachedAuth();
       localStorage.removeItem("zenbill_auth_token");
     }
   }, []);
@@ -96,41 +133,73 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
+// ─── Premium loading screen ───────────────────────────────────────────────────
+
+const AuthLoadingScreen = () => (
+  <div style={{
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #0b0e1a 0%, #0f172a 60%, #1e1b4b 100%)",
+    flexDirection: "column",
+    gap: 20,
+  }}>
+    {/* Logo mark */}
+    <div style={{
+      width: 52, height: 52,
+      borderRadius: 16,
+      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: "0 0 0 1px rgba(99,102,241,0.4), 0 8px 32px rgba(99,102,241,0.5)",
+      marginBottom: 4,
+    }}>
+      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="white">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    </div>
+
+    <div style={{ textAlign: "center" }}>
+      <h1 style={{
+        fontSize: 22, fontWeight: 800,
+        color: "white",
+        margin: "0 0 4px",
+        letterSpacing: "-0.3px",
+        fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+      }}>ZenBill</h1>
+      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0, letterSpacing: "0.1em", fontWeight: 600, textTransform: "uppercase" }}>
+        Invoice Manager
+      </p>
+    </div>
+
+    {/* Spinner */}
+    <div style={{ position: "relative" }}>
+      <div style={{
+        width: 40, height: 40,
+        borderRadius: "50%",
+        border: "3px solid rgba(99,102,241,0.2)",
+        borderTopColor: "#6366f1",
+        animation: "spin 0.8s linear infinite",
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+
+    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0, fontWeight: 500 }}>
+      Verifying your session…
+    </p>
+  </div>
+);
+
+// ─── RequireAuth ──────────────────────────────────────────────────────────────
+
 export const RequireAuth: React.FC<React.PropsWithChildren<{}>> = ({
   children,
 }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  // Show loading state while checking authentication
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <svg
-            className="animate-spin h-8 w-8 text-blue-600"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v8H4z"
-            />
-          </svg>
-          <p className="text-sm font-medium text-gray-500">Loading ZenBill...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingScreen />;
   }
 
   if (!isAuthenticated) {

@@ -20,157 +20,275 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userEmai
   const isDev = import.meta.env.DEV;
 
   const primaryNavItems = [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: DashboardIcon,
-      views: ["dashboard"],
-    },
-    {
-      id: "invoices",
-      label: "Invoices",
-      icon: DocumentIcon,
-      views: ["invoices", "create-invoice", "edit-invoice", "invoice-details"],
-    },
-    { id: "clients", label: "Clients", icon: UsersIcon, views: ["clients"] },
-    { id: "products", label: "Products", icon: BoxIcon, views: ["products"] },
-    // "Dummy PDF" is a dev-only tool — hidden in production
-    ...(isDev
-      ? [{ id: "DummyPDF", label: "Dummy PDF", icon: PdfIcon, views: ["DummyPDF"] }]
-      : []),
+    { id: "dashboard",  label: "Dashboard",  icon: DashboardIcon, views: ["dashboard"] },
+    { id: "invoices",   label: "Invoices",   icon: DocumentIcon,  views: ["invoices", "create-invoice", "edit-invoice", "invoice-details"] },
+    { id: "clients",    label: "Clients",    icon: UsersIcon,     views: ["clients", "client-details"] },
+    { id: "products",   label: "Products",   icon: BoxIcon,       views: ["products"] },
+    ...(isDev ? [{ id: "DummyPDF", label: "Dummy PDF", icon: PdfIcon, views: ["DummyPDF"] }] : []),
   ];
 
-  const quotationNavItem = {
-    id: "create-quotation",
-    label: "Quotation",
-    icon: QuotationIcon,
-    views: ["create-quotation"],
-  };
+  const quotationNavItem = { id: "create-quotation", label: "Quotation", icon: QuotationIcon, views: ["create-quotation"] };
+  const settingsNavItem  = { id: "settings",          label: "Settings",  icon: SettingsIcon,   views: ["settings"] };
 
-  const settingsNavItem = {
-    id: "settings",
-    label: "Settings",
-    icon: SettingsIcon,
-    views: ["settings"],
-  };
-
-  // Derive display name and initials from email
   const displayEmail = userEmail || "";
-  const displayName = displayEmail.split("@")[0] || "User";
-  const initials = displayName.charAt(0).toUpperCase();
+  const displayName  = displayEmail.split("@")[0] || "User";
+  const initials     = displayName.charAt(0).toUpperCase();
+
+  const NavItem = ({
+    item,
+    badge,
+  }: {
+    item: { id: string; label: string; icon: React.FC<any>; views: string[] };
+    badge?: React.ReactNode;
+  }) => {
+    const isActive = item.views.includes(currentView);
+    return (
+      <a
+        href="#"
+        onClick={(e) => { e.preventDefault(); setView(item.id as View); }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "9px 12px",
+          borderRadius: "10px",
+          fontSize: "13.5px",
+          fontWeight: isActive ? 600 : 500,
+          color: isActive ? "#ffffff" : "rgba(255,255,255,0.5)",
+          background: isActive ? "rgba(99,102,241,0.18)" : "transparent",
+          border: isActive ? "1px solid rgba(99,102,241,0.3)" : "1px solid transparent",
+          boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)" : "none",
+          transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+          textDecoration: "none",
+          position: "relative",
+          overflow: "hidden",
+          marginBottom: "2px",
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
+            (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.85)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.5)";
+          }
+        }}
+      >
+        {/* Active left bar */}
+        {isActive && (
+          <span style={{
+            position: "absolute",
+            left: 0, top: "50%",
+            transform: "translateY(-50%)",
+            width: "3px", height: "60%",
+            borderRadius: "0 3px 3px 0",
+            background: "linear-gradient(180deg, #818cf8, #6366f1)",
+          }} />
+        )}
+        <item.icon
+          style={{
+            width: 17, height: 17,
+            marginRight: 10,
+            flexShrink: 0,
+            opacity: isActive ? 1 : 0.6,
+            transition: "all 0.2s",
+          }}
+        />
+        <span style={{ flex: 1 }}>{item.label}</span>
+        {badge}
+      </a>
+    );
+  };
 
   return (
-    <div className="w-64 bg-slate-50 border-r border-slate-200 flex flex-col h-screen">
-      <div className="h-16 flex items-center px-6 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-md shadow-blue-600/20">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div
+      style={{
+        width: 240,
+        background: "var(--sidebar-bg)",
+        borderRight: "1px solid var(--sidebar-border)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        position: "relative",
+        flexShrink: 0,
+      }}
+    >
+      {/* Ambient glow top-right */}
+      <div style={{
+        position: "absolute",
+        top: -40, right: -40,
+        width: 180, height: 180,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
+      {/* ── Logo ── */}
+      <div style={{
+        height: 64,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 20px",
+        borderBottom: "1px solid var(--sidebar-border)",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 34, height: 34,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            flexShrink: 0,
+          }}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">
-            ZenBill
-          </h1>
+          <div>
+            <h1 className="font-display" style={{
+              fontSize: 17,
+              fontWeight: 800,
+              color: "#ffffff",
+              letterSpacing: "-0.3px",
+              lineHeight: 1,
+              margin: 0,
+            }}>ZenBill</h1>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", margin: 0, marginTop: 1, letterSpacing: "0.05em" }}>INVOICE MANAGER</p>
+          </div>
         </div>
       </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        <p className="px-2 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Main Menu</p>
-        
-        {primaryNavItems.map((item) => {
-          const isActive = item.views.includes(currentView);
-          return (
-            <a
-              key={item.id}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setView(item.id as View);
-              }}
-              className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                isActive
-                  ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900"
-              }`}
-            >
-              <item.icon className={`w-5 h-5 mr-3 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
-              {item.label}
-            </a>
-          );
-        })}
+      {/* ── Nav ── */}
+      <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
+        {/* Section label */}
+        <p style={{
+          fontSize: 10, fontWeight: 700,
+          color: "rgba(255,255,255,0.2)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          padding: "0 4px",
+          marginBottom: 8, marginTop: 0,
+        }}>Main Menu</p>
 
-        {/* ── Quotation Section ── */}
-        <div className="pt-4 mt-4 border-t border-slate-200">
-          <p className="px-2 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Documents</p>
-          {[quotationNavItem].map((item) => {
-            const isActive = item.views.includes(currentView);
-            return (
-              <a
-                key={item.id}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setView(item.id as View);
-                }}
-                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? "bg-white text-sky-700 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900"
-                }`}
-              >
-                <item.icon className={`w-5 h-5 mr-3 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
-                {item.label}
-                <span className="ml-auto text-[9px] font-bold bg-sky-100 text-sky-600 px-2 py-0.5 rounded-full border border-sky-200">
-                  NEW
-                </span>
-              </a>
-            );
-          })}
+        {primaryNavItems.map((item) => (
+          <NavItem key={item.id} item={item} />
+        ))}
+
+        {/* Documents section */}
+        <div style={{
+          margin: "20px 0 8px",
+          paddingTop: 16,
+          borderTop: "1px solid var(--sidebar-border)",
+        }}>
+          <p style={{
+            fontSize: 10, fontWeight: 700,
+            color: "rgba(255,255,255,0.2)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            padding: "0 4px",
+            marginBottom: 8, marginTop: 0,
+          }}>Documents</p>
+          <NavItem
+            item={quotationNavItem}
+            badge={
+              <span style={{
+                fontSize: 9, fontWeight: 800,
+                background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+                color: "white",
+                padding: "2px 7px",
+                borderRadius: 99,
+                letterSpacing: "0.06em",
+              }}>NEW</span>
+            }
+          />
         </div>
 
-        {/* ── Settings (bottom) ── */}
-        <div className="pt-4 mt-4 border-t border-slate-200">
-          <p className="px-2 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
-          {[settingsNavItem].map((item) => {
-            const isActive = item.views.includes(currentView);
-            return (
-              <a
-                key={item.id}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setView(item.id as View);
-                }}
-                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? "bg-white text-slate-800 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900"
-                }`}
-              >
-                <item.icon className={`w-5 h-5 mr-3 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
-                {item.label}
-              </a>
-            );
-          })}
+        {/* System section */}
+        <div style={{
+          margin: "20px 0 8px",
+          paddingTop: 16,
+          borderTop: "1px solid var(--sidebar-border)",
+        }}>
+          <p style={{
+            fontSize: 10, fontWeight: 700,
+            color: "rgba(255,255,255,0.2)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            padding: "0 4px",
+            marginBottom: 8, marginTop: 0,
+          }}>System</p>
+          <NavItem item={settingsNavItem} />
         </div>
       </nav>
 
-      {/* ── Clickable Profile / Account Bottom Section ── */}
-      <div className="p-4 bg-white border-t border-slate-200">
-        <button 
+      {/* ── User card ── */}
+      <div style={{
+        padding: "12px",
+        borderTop: "1px solid var(--sidebar-border)",
+        background: "rgba(0,0,0,0.2)",
+        flexShrink: 0,
+      }}>
+        <button
           onClick={() => setView("account")}
-          className={`w-full p-2 rounded-xl flex items-center gap-3 transition-all text-left focus:outline-none ${
-            currentView === "account" ? "bg-slate-50 ring-1 ring-slate-200" : "hover:bg-slate-50"
-          }`}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: currentView === "account"
+              ? "rgba(99,102,241,0.15)"
+              : "rgba(255,255,255,0.04)",
+            border: currentView === "account"
+              ? "1px solid rgba(99,102,241,0.3)"
+              : "1px solid rgba(255,255,255,0.06)",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            textAlign: "left",
+          }}
+          onMouseEnter={(e) => {
+            if (currentView !== "account") {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (currentView !== "account") {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+            }
+          }}
         >
-          <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+          {/* Avatar */}
+          <div style={{
+            width: 34, height: 34,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, fontWeight: 700, color: "white",
+            flexShrink: 0,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+          }}>
             {initials}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-slate-800 truncate capitalize">{displayName}</p>
-            <p className="text-xs font-medium text-slate-500 truncate">{displayEmail || "Administrator"}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{
+              fontSize: 13, fontWeight: 600,
+              color: "rgba(255,255,255,0.9)",
+              margin: 0,
+              textTransform: "capitalize",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{displayName}</p>
+            <p style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.35)",
+              margin: 0, marginTop: 1,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{displayEmail || "Administrator"}</p>
           </div>
-          <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.3)">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
