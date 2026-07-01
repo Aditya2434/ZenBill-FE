@@ -1,29 +1,51 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { Dashboard } from "./components/Dashboard";
-import { InvoiceList } from "./components/InvoiceList";
-import { InvoiceWizard } from "./components/InvoiceWizard";
-import { Profile } from "./components/Profile";
-import { ClientManager } from "./components/ClientManager";
-import { ProductManager } from "./components/ProductManager";
-import { AccountSettings } from "./components/AccountSettings";
-import { TemplateSelector } from "./components/TemplateSelector";
+// Always-needed (tiny): eagerly imported
+import Login from "./components/auth/Login";
+import Signup from "./components/auth/Signup";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { RequireAuth, useAuth } from "./hooks/useAuth";
 import { useInvoices } from "./hooks/useInvoices";
 import { useProfile } from "./hooks/useProfile";
 import { useClients } from "./hooks/useClients";
 import { useProducts } from "./hooks/useProducts";
-import Login from "./components/auth/Login";
-import Signup from "./components/auth/Signup";
 import { Invoice } from "./types";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { RequireAuth, useAuth } from "./hooks/useAuth";
-import DummyPDF from "./components/DummyPDF";
-import { PDFViewer } from "@react-pdf/renderer";
-import InvoiceView from "./components/InvoiceView";
-import QuotationEditor from "./components/QuotationEditor";
-import QuotationList from "./components/QuotationList";
-import { ClientDetails } from "./components/ClientDetails";
+
+// Heavy components: lazy-loaded on first navigation
+const Dashboard       = lazy(() => import("./components/Dashboard").then(m => ({ default: m.Dashboard })));
+const InvoiceList     = lazy(() => import("./components/InvoiceList").then(m => ({ default: m.InvoiceList })));
+const InvoiceWizard   = lazy(() => import("./components/InvoiceWizard").then(m => ({ default: m.InvoiceWizard })));
+const InvoiceView     = lazy(() => import("./components/InvoiceView"));
+const Profile         = lazy(() => import("./components/Profile").then(m => ({ default: m.Profile })));
+const ClientManager   = lazy(() => import("./components/ClientManager").then(m => ({ default: m.ClientManager })));
+const ClientDetails   = lazy(() => import("./components/ClientDetails").then(m => ({ default: m.ClientDetails })));
+const ProductManager  = lazy(() => import("./components/ProductManager").then(m => ({ default: m.ProductManager })));
+const AccountSettings = lazy(() => import("./components/AccountSettings").then(m => ({ default: m.AccountSettings })));
+const TemplateSelector = lazy(() => import("./components/TemplateSelector").then(m => ({ default: m.TemplateSelector })));
+const QuotationList   = lazy(() => import("./components/QuotationList"));
+const QuotationEditor = lazy(() => import("./components/QuotationEditor"));
+const DummyPDF        = lazy(() => import("./components/DummyPDF"));
+
+// Lazy-load PDF renderer only when needed
+const PDFViewer = lazy(() => import("@react-pdf/renderer").then(m => ({ default: m.PDFViewer })));
+
+// Lightweight in-content fallback (no full-screen spinner)
+const PageLoader = () => (
+  <div style={{
+    display: "flex", alignItems: "center", justifyContent: "center",
+    height: "60vh", gap: 12, flexDirection: "column",
+  }}>
+    <div style={{
+      width: 36, height: 36, borderRadius: "50%",
+      border: "3px solid rgba(99,102,241,0.15)",
+      borderTopColor: "#6366f1",
+      animation: "spin 0.7s linear infinite",
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <p style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", margin: 0 }}>Loading...</p>
+  </div>
+);
 
 export type View =
   | "dashboard"
@@ -316,7 +338,7 @@ const App: React.FC = () => {
         path="/*"
         element={
           <RequireAuth>
-            <div className="flex h-screen bg-gray-50 text-gray-800 font-sans">
+            <div className="flex h-screen font-sans" style={{ background: 'var(--content-bg, #f4f6fb)' }}>
               {/* Desktop Sidebar */}
               <div className="hidden lg:flex lg:flex-shrink-0">
                 <Sidebar currentView={currentView} setView={handleSetView} userEmail={userEmail} />
@@ -332,12 +354,13 @@ const App: React.FC = () => {
                   />
 
                   {/* Drawer Content */}
-                  <div className="relative flex-1 flex flex-col max-w-[280px] w-full bg-slate-50 border-r border-slate-200 z-50 animate-fade-in-right">
+                  <div className="relative flex-1 flex flex-col max-w-[280px] w-full z-50 animate-fade-in-right" style={{ background: 'var(--sidebar-bg, #0b0e1a)' }}>
                     {/* Close Button */}
                     <div className="absolute top-4 right-4 z-50">
                       <button
                         onClick={() => setMobileSidebarOpen(false)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200/60 focus:outline-none"
+                        className="p-1.5 rounded-lg focus:outline-none"
+                        style={{ color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.08)" }}
                       >
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -361,7 +384,9 @@ const App: React.FC = () => {
               <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 <Header setView={handleSetView} onMenuClick={() => setMobileSidebarOpen(true)} />
                 <main className={`flex-1 overflow-x-hidden overflow-y-auto ${currentView === "create-invoice" || currentView === "edit-invoice" ? "p-0" : "p-4 md:p-6 lg:p-8"}`}>
-                  {renderContent()}
+                  <Suspense fallback={<PageLoader />}>
+                    {renderContent()}
+                  </Suspense>
                 </main>
               </div>
             </div>

@@ -601,7 +601,8 @@ function TemplateDefaultPDF({ invoice, profile }: DummyPDFProps) {
                 <View style={styles.lwvValueWrapper}>
                   <Text style={styles.lwvColon}>:</Text>
                   <Text style={styles.lwvValue}>{invoice.placeOfSupply || ""}</Text>
-                </View>
+                </View> 
+                {/* What is this mess, clean this up */}
               </View>
               <View style={styles.labelWithValue}>
                 <Text style={styles.lwvLabel}>Order No</Text>
